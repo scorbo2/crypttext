@@ -49,7 +49,6 @@ public class MenuManager {
         rebuildFileMenu();
         rebuildEditMenu();
         rebuildHelpMenu();
-        // TODO you can add more top-level menus here if needed.
     }
 
     private void rebuildMenuBar() {
@@ -79,7 +78,7 @@ public class MenuManager {
     private void rebuildFileMenu() {
         fileMenu.removeAll();
 
-        // TODO add your "File" menu items here.
+        fileMenu.add(new JMenuItem(AppConfig.getInstance().getNewTabAction()));
 
         // Add any items to this list from our extensions, if any:
         List<JMenuItem> items = CryptTextExtensionManager.getInstance().getMenuItems("File");

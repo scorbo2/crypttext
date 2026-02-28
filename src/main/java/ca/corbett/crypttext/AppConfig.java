@@ -1,5 +1,6 @@
 package ca.corbett.crypttext;
 
+import ca.corbett.crypttext.ui.actions.NewTabAction;
 import ca.corbett.extensions.AppProperties;
 import ca.corbett.extras.io.KeyStrokeManager;
 import ca.corbett.extras.properties.AbstractProperty;
@@ -54,6 +55,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
      */
     public static final String KEYSTROKE_PREFIX = "Keystrokes.";
 
+    private static final String KEY_NEW_TAB = KEYSTROKE_PREFIX + "General.newTab";
     private static final String KEY_PROPERTIES = KEYSTROKE_PREFIX + "General.properties";
     private static final String KEY_EXTENSIONS = KEYSTROKE_PREFIX + "General.extensionManager";
     private static final String KEY_LOG_CONSOLE = KEYSTROKE_PREFIX + "General.logConsole";
@@ -73,6 +75,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     // (the advantage of centralizing them here is that they can be
     //  disabled/enabled/renamed or have their shortcut reassigned,
     //  and the changes will take effect wherever the action is used)
+    private Action newTabAction;
     private Action propertiesAction;
     private Action extensionManagerAction;
     private Action logConsoleAction;
@@ -106,6 +109,10 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         return AppProperties.peek(PROPS_FILE, propName);
     }
 
+    public Action getNewTabAction() {
+        return newTabAction;
+    }
+
     public Action getPropertiesAction() {
         return propertiesAction;
     }
@@ -134,6 +141,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         List<KeyStrokeProperty> keyProps = new ArrayList<>();
 
         // Add the ones we control:
+        keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_NEW_TAB));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_PROPERTIES));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_EXTENSIONS));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_LOG_CONSOLE));
@@ -183,6 +191,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         props.add(enableSingleInstance);
 
         // Let's create all our actions:
+        newTabAction = new NewTabAction();
         propertiesAction = new PropertiesAction();
         extensionManagerAction = new ExtensionManagerAction();
         logConsoleAction = new LogConsoleAction();
@@ -208,6 +217,10 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private List<AbstractProperty> createKeyboardProperties() {
         List<AbstractProperty> props = new ArrayList<>();
 
+        props.add(new KeyStrokeProperty(KEY_NEW_TAB, "New Tab:",
+                                        KeyStrokeManager.parseKeyStroke("Ctrl+N"),
+                                        newTabAction)
+                          .setAllowBlank(true));
         props.add(new KeyStrokeProperty(KEY_PROPERTIES, "Properties Dialog:",
                                         KeyStrokeManager.parseKeyStroke("Ctrl+P"),
                                         propertiesAction)
