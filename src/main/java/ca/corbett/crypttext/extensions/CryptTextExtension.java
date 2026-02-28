@@ -15,7 +15,7 @@ import java.util.List;
  * method Javadocs in this class to learn what functionality you can provide via extensions!
  * <p>
  *     <b>Retrieving/modifying editor tab contents</b> - your extension can query for the names
- *     of open editor tabs using MainWindow's getOpenTabNames() method. Retrieve the current
+ *     of open editor tabs using MainWindow's getTabNames() method. Retrieve the current
  *     contents of an editor tab with getTabContents(tabName), and modify the contents
  *     of an editor tab with setTabContents(tabName, newContents).
  * </p>

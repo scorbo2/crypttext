@@ -12,7 +12,7 @@ import java.awt.event.ActionEvent;
  */
 public class NewTabAction extends EnhancedAction {
     public NewTabAction() {
-        super("New");
+        super("New tab");
     }
 
     @Override
