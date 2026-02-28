@@ -1,20 +1,20 @@
 package ca.corbett.crypttext.ui;
 
+import ca.corbett.crypttext.AppConfig;
+import ca.corbett.crypttext.CryptTextResourceLoader;
+import ca.corbett.crypttext.Main;
+import ca.corbett.crypttext.Version;
+import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 import ca.corbett.crypttext.extensions.ExtraComponentPosition;
+import ca.corbett.crypttext.ui.actions.UIReloadAction;
 import ca.corbett.extras.MessageUtil;
+import ca.corbett.extras.SingleInstanceManager;
 import ca.corbett.extras.ToggleableTabbedPane;
 import ca.corbett.extras.io.KeyStrokeManager;
-import ca.corbett.extras.SingleInstanceManager;
 import ca.corbett.extras.logging.LogConsole;
 import ca.corbett.extras.logging.LogConsoleStyle;
 import ca.corbett.extras.logging.LogConsoleTheme;
 import ca.corbett.extras.properties.KeyStrokeProperty;
-import ca.corbett.crypttext.AppConfig;
-import ca.corbett.crypttext.Main;
-import ca.corbett.crypttext.CryptTextResourceLoader;
-import ca.corbett.crypttext.Version;
-import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
-import ca.corbett.crypttext.ui.actions.UIReloadAction;
 
 import javax.swing.Icon;
 import javax.swing.JComponent;
@@ -160,6 +160,10 @@ public final class MainWindow extends JFrame implements UIReloadable {
         addExtraComponents(ExtraComponentPosition.RIGHT, BorderLayout.EAST);
         addExtraComponents(ExtraComponentPosition.TOP, BorderLayout.NORTH);
         addExtraComponents(ExtraComponentPosition.BOTTOM, BorderLayout.SOUTH);
+        
+        // Ensure the updated content pane is laid out and repainted immediately.
+        getContentPane().revalidate();
+        getContentPane().repaint();
     }
 
     /**
