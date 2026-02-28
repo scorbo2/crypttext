@@ -12,30 +12,9 @@ FORMAT="tarball"
 APPLICATION="CryptText"
 VERSION="1.0-SNAPSHOT"
 
-# TODO Change this to an appropriate category for your app!
-CATEGORY="Utility"
-# Possible categories:
-# - Development - Programming tools, IDEs, editors
-# - TextEditor - Text editors specifically
-# - Office - Office applications, document editors
-# - Graphics - Image viewers, editors
-# - AudioVideo - Media players, editors
-# - Game - Games
-# - Network - Web browsers, email clients
-# - Utility - System utilities, tools
-# - Settings - Configuration tools
-# - System - System administration tools
-#
-# Additional Categories (for further refinement):
-#
-# - Java - Java applications
-# - FileManager - File management tools
-# - Viewer - File viewers
-# - Editor - Generic editors
+CATEGORY="TextEditor"
 
-# TODO optionally, you can supply a project URL.
-# If present, a README will be generated and included in the generated tarball.
-PROJECT_URL=""
+PROJECT_URL="https://github.com/scorbo2/crypttext"
 
 # Extra memory settings like Xmx and Xms can be specified here:
 JAVAMEM=
@@ -50,6 +29,4 @@ TO_COPY="${TO_COPY} src/main/resources/ca/corbett/crypttext/ReleaseNotes.txt"
 # TODO uncomment this if you wish to support dynamic extension discovery and download:
 #TO_COPY="${TO_COPY} update_sources.json"
 
-# TODO uncomment this to automatically generate a desktop icon for your app:
-#      (the path can be adjusted, but the file must be named "logo.png" and should be square)
-#TO_COPY="${TO_COPY} src/main/resources/ca/corbett/crypttext/images/logo.png"
+TO_COPY="${TO_COPY} src/main/resources/ca/corbett/crypttext/images/logo.png"

@@ -36,7 +36,7 @@ public final class MainWindow extends JFrame implements UIReloadable {
 
     private MainWindow() {
         setTitle(Version.FULL_NAME);
-        setIconImage(CryptTextResourceLoader.getSwingExtrasIcon()); // TODO - set your application icon here
+        setIconImage(CryptTextResourceLoader.getSquareLogo());
         setSize(800, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         addWindowListener(new WindowCloseHandler());
@@ -184,45 +184,25 @@ public final class MainWindow extends JFrame implements UIReloadable {
     }
 
     /**
-     * Invoked internally to set up the LogConsole. This is entirely optional,
-     * and can be hidden entirely in the UI if you don't want users to see it.
-     * This example application exposes the log console with a menu item in the "Help" menu.
+     * Invoked internally to set up the LogConsole with our custom CryptText theme and styles.
      */
     private void configureLogConsole() {
         LogConsole.getInstance().setIconImage(getIconImage()); // use same logo as MainWindow
 
-        // We can create our own LogConsole theme here.
-        // This is more than just cosmetic, as we'll see.
-        // Let's start by creating a new theme based on the "matrix" theme (green on black):
+        // Our custom theme will be based on the "matrix" theme (green on black):
         LogConsoleTheme theme = LogConsoleTheme.createMatrixStyledTheme();
 
-        // We can add custom styles to our theme.
-        // This can help certain operations within your application stand out better in the LogConsole.
-        // For example, let's create example styles for "dataImport" and "dataExport" operations:
-        theme.setStyle("dataImport", createLogConsoleStyle("dataImport", Color.CYAN));
-        theme.setStyle("dataExport", createLogConsoleStyle("dataExport", Color.MAGENTA));
-        // TODO repeat for any other operations you wish to "stand out" in the LogConsole.
+        theme.setStyle("encrypt", createLogConsoleStyle("encrypt:", Color.RED));
+        theme.setStyle("decrypt", createLogConsoleStyle("decrypt:", Color.CYAN));
+        theme.setStyle("load", createLogConsoleStyle("load:", Color.MAGENTA));
+        theme.setStyle("save", createLogConsoleStyle("save:", Color.MAGENTA));
 
         // Now let's register our theme and switch to it immediately:
         LogConsole.getInstance().registerTheme("CryptTextTheme", theme, true);
-
-        // To test it out, let's log some test messages.
-        logger.info("The LogConsole has been initialized!");
-
-        // Any log message that contains our special tokens will now visually stand out in the LogConsole:
-        logger.info("dataImport: This is a simulated data import operation log message.");
-        logger.info("dataExport: This is a simulated data export operation log message.");
-
-        // Of course, that only works when viewing log messages in the LogConsole.
-        // That's it! It's very easy to configure and use.
-        logger.info("By styling your application operations, you can quickly spot important events!");
-        logger.info("This makes monitoring and debugging much easier.");
     }
 
     /**
-     * Creates a LogConsoleStyle for the given token and font color.
-     * Any log message that contains the given token will be styled with the given color
-     * when viewed in the LogConsole.
+     * Creates a bold style for the given token and font color, to be used in our LogConsole theme.
      */
     private LogConsoleStyle createLogConsoleStyle(String token, Color fontColor) {
         LogConsoleStyle style = new LogConsoleStyle();

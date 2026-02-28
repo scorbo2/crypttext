@@ -16,9 +16,9 @@ public class Version {
     public static String NAME = "CryptText";
     public static String VERSION = "1.0-SNAPSHOT";
     public static String FULL_NAME = NAME + " " + VERSION;
-    public static String COPYRIGHT = "Copyright © 2026 Your Name"; // TODO update this
-    public static String PROJECT_URL = ""; // TODO GitHub repo or project website URL, if you have one
-    public static String LICENSE = "https://opensource.org/license/mit"; // TODO replace with your license URL
+    public static String COPYRIGHT = "Copyright © 2026 Steve Corbett";
+    public static String PROJECT_URL = "https://github.com/scorbo2/crypttext";
+    public static String LICENSE = "https://opensource.org/license/mit";
 
     /**
      * The directory where the application was installed -
@@ -81,13 +81,10 @@ public class Version {
         aboutInfo.showLogConsole = false; // If true, makes the app logo clickable to show the log console.
         aboutInfo.releaseNotesLocation = "/ca/corbett/crypttext/ReleaseNotes.txt";
 
-        // TODO optional, but recommended: update with the correct path to your logo image:
-        //aboutInfo.logoImageLocation = "/ca/corbett/crypttext/logo_wide.jpg";
-        //aboutInfo.logoDisplayMode = AboutInfo.LogoDisplayMode.STRETCH;
-        // If unspecified, a logo image will be generated automatically using applicationName.
+        aboutInfo.logoImageLocation = "/ca/corbett/crypttext/images/logo_wide.jpg";
+        aboutInfo.logoDisplayMode = AboutInfo.LogoDisplayMode.STRETCH;
 
-        // TODO optional, but recommended: update with a short description of your app:
-        aboutInfo.shortDescription = "This is the CryptText application.";
+        aboutInfo.shortDescription = "User-friendly extensible encrypted text editor.";
 
         // See if we were given an installation directory:
         String installDir = System.getProperty("INSTALL_DIR", null);
