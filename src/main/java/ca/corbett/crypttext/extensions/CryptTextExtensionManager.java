@@ -8,8 +8,6 @@ import ca.corbett.updates.UpdateManager;
 import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
-import javax.swing.JPanel;
-import java.awt.Color;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;

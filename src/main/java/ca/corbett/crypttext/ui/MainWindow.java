@@ -15,7 +15,6 @@ import ca.corbett.crypttext.CryptTextResourceLoader;
 import ca.corbett.crypttext.Version;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 import ca.corbett.crypttext.ui.actions.UIReloadAction;
-import ca.corbett.forms.SwingFormsResources;
 
 import javax.swing.Icon;
 import javax.swing.JComponent;
