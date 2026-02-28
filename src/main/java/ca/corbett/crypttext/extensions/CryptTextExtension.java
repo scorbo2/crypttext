@@ -2,6 +2,7 @@ package ca.corbett.crypttext.extensions;
 
 import ca.corbett.extensions.AppExtension;
 
+import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import java.io.File;
@@ -12,6 +13,12 @@ import java.util.List;
  * Extensions can supply instances of this class, which will be loaded by the CryptTextExtensionManager and
  * invoked at various points in the application to allow extensions to add functionality. Review the
  * method Javadocs in this class to learn what functionality you can provide via extensions!
+ * <p>
+ *     <b>Retrieving/modifying editor tab contents</b> - your extension can query for the names
+ *     of open editor tabs using MainWindow's getOpenTabNames() method. Retrieve the current
+ *     contents of an editor tab with getTabContents(tabName), and modify the contents
+ *     of an editor tab with setTabContents(tabName, newContents).
+ * </p>
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
@@ -125,6 +132,26 @@ public abstract class CryptTextExtension extends AppExtension {
      * @return a decrypted version of the text, or null to allow the application to handle decryption.
      */
     public String textWillDecrypt(String textToDecrypt) {
+        return null;
+    }
+
+    /**
+     * Extensions can optionally supply "extra" components (typically panels) to be placed around the
+     * main text area in the MainWindow. This method will be invoked for each position defined in
+     * ExtraComponentPosition, and any non-null component returned will be added to the
+     * MainWindow in the specified position. If more than one extension supplies a component
+     * for the same position, the components will be placed in a JTabbedPane in the order of the
+     * extensions' load sequence.
+     * <p>
+     *     <b>Hint:</b> use setName() on your returned component to give it a useful tab name
+     *     in the JTabbedPane if there are multiple components in the same position.
+     *     The tab header will not be shown if only one extension returns a component for a given position.
+     * </p>
+     *
+     * @param position The position for which the application is requesting an extra component.
+     * @return a JComponent to be added to the MainWindow in the specified position, or null for none.
+     */
+    public JComponent getExtraComponent(ExtraComponentPosition position) {
         return null;
     }
 }

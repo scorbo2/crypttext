@@ -24,6 +24,8 @@ public class CryptTextResourceLoader extends ResourceLoader {
 
     private static final String SQUARE_ICON_PATH = IMAGE_PATH + "logo.png";
     private static final String WIDE_LOGO_PATH = IMAGE_PATH + "logo_wide.jpg";
+    private static final String LOCK_ICON_PATH = IMAGE_PATH + "icon_lock.png";
+    private static final String UNLOCK_ICON_PATH = IMAGE_PATH + "icon_unlock.png";
 
     private CryptTextResourceLoader() {
     }
@@ -47,5 +49,19 @@ public class CryptTextResourceLoader extends ResourceLoader {
      */
     public static BufferedImage getWideLogo() {
         return getImage(PREFIX + WIDE_LOGO_PATH);
+    }
+
+    /**
+     * Returns an icon representing a locked state, suitable for display in the UI when a file is encrypted.
+     */
+    public static ImageIcon getLockIcon(int size) {
+        return getIcon(PREFIX + LOCK_ICON_PATH, size);
+    }
+
+    /**
+     * Returns an icon representing an unlocked state, suitable for display in the UI when a file is decrypted.
+     */
+    public static ImageIcon getUnlockIcon(int size) {
+        return getIcon(PREFIX + UNLOCK_ICON_PATH, size);
     }
 }

@@ -1,6 +1,8 @@
 package ca.corbett.crypttext.ui;
 
+import ca.corbett.crypttext.extensions.ExtraComponentPosition;
 import ca.corbett.extras.MessageUtil;
+import ca.corbett.extras.ToggleableTabbedPane;
 import ca.corbett.extras.io.KeyStrokeManager;
 import ca.corbett.extras.SingleInstanceManager;
 import ca.corbett.extras.logging.LogConsole;
@@ -13,11 +15,18 @@ import ca.corbett.crypttext.CryptTextResourceLoader;
 import ca.corbett.crypttext.Version;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 import ca.corbett.crypttext.ui.actions.UIReloadAction;
+import ca.corbett.forms.SwingFormsResources;
 
+import javax.swing.Icon;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -30,8 +39,10 @@ public final class MainWindow extends JFrame implements UIReloadable {
     private static MainWindow instance;
     private static final Logger logger = Logger.getLogger(MainWindow.class.getName());
     private boolean isSingleInstanceModeEnabled;
-    private MenuManager menuManager;
+    private final MenuManager menuManager;
     private final KeyStrokeManager keyStrokeManager;
+    private final JTabbedPane tabPane;
+    private int untitledTabCount = 1; // for generating default tab titles like "Untitled 1", "Untitled 2", etc.
     private MessageUtil messageUtil;
 
     private MainWindow() {
@@ -41,12 +52,18 @@ public final class MainWindow extends JFrame implements UIReloadable {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         addWindowListener(new WindowCloseHandler());
         keyStrokeManager = new KeyStrokeManager(this);
-        setKeyStrokes();
         menuManager = new MenuManager();
         setJMenuBar(menuManager.getMainMenuBar());
         UIReloadAction.getInstance().registerReloadable(this);
         isSingleInstanceModeEnabled = AppConfig.getInstance().isSingleInstanceEnabled();
         configureLogConsole();
+        tabPane = new JTabbedPane();
+        setLayout(new BorderLayout());
+
+        // We will eventually support command-line args for opening specific files on launch.
+        // We will also have an option for restoring previously-opened tabs on startup.
+        // For now, we will just start with a single blank tab:
+        newTab();
     }
 
     public static MainWindow getInstance() {
@@ -54,6 +71,17 @@ public final class MainWindow extends JFrame implements UIReloadable {
             instance = new MainWindow();
         }
         return instance;
+    }
+
+    /**
+     * Overridden so we can populate our UI when the main window becomes visible.
+     */
+    @Override
+    public void setVisible(boolean isVisible) {
+        if (isVisible) {
+            reloadUI();
+        }
+        super.setVisible(isVisible);
     }
 
     /**
@@ -120,6 +148,108 @@ public final class MainWindow extends JFrame implements UIReloadable {
 
         // Rebuild our main menu, as the available items may have changed:
         menuManager.rebuildAll();
+
+        // User may have enabled or disabled the option to show lock icons on tabs:
+        updateTabIcons();
+
+        // Our list of extra components around the main tab pane may have changed,
+        // if extensions were installed/uninstalled/enabled/disabled, so let's
+        // rebuild the whole content pane from scratch:
+        getContentPane().removeAll();
+        add(tabPane, BorderLayout.CENTER);
+        addExtraComponents(ExtraComponentPosition.LEFT, BorderLayout.WEST);
+        addExtraComponents(ExtraComponentPosition.RIGHT, BorderLayout.EAST);
+        addExtraComponents(ExtraComponentPosition.TOP, BorderLayout.NORTH);
+        addExtraComponents(ExtraComponentPosition.BOTTOM, BorderLayout.SOUTH);
+    }
+
+    /**
+     * Creates a new, untitled tab.
+     */
+    public void newTab() {
+        newTab(null);
+    }
+
+    /**
+     * Creates a new tab with the given title. If the title is null,
+     * a default title will be assigned to the tab (e.g. "Untitled 1", "Untitled 2", etc.)
+     *
+     * @param title the title to assign to the new tab, or null for a default title
+     */
+    public void newTab(String title) {
+        if (title == null) {
+            title = "Untitled " + untitledTabCount++;
+        }
+
+        // This will be our editor pane eventually, for now it's just a blank panel:
+        JComponent tabComponent = new JPanel();
+
+        // Render the tab with or without an icon depending on the user's preference in app config:
+        if (AppConfig.getInstance().isTabLockIconsEnabled()) {
+            int iconSize = AppConfig.getInstance().getTabIconSize();
+            Icon icon = CryptTextResourceLoader.getUnlockIcon(iconSize);
+            tabPane.addTab(title, icon, new JPanel());
+        }
+        else {
+            tabPane.addTab(title, new JPanel());
+        }
+    }
+
+    /**
+     * Returns the contents of the tab with the given name, or null if no such tab exists.
+     *
+     * @param name the name of the tab to get the contents of
+     * @return the contents of the tab with the given name, or null if no such tab exists
+     */
+    public String getTabContents(String name) {
+        // Placeholder, until we have actual editing in place
+        // for now, we return empty string for all inputs:
+        return "";
+    }
+
+    /**
+     * Sets the contents of the named tab to the given value.
+     * If no such tab exists, this method does nothing.
+     *
+     * @param tabName the name of the tab to set the contents of
+     * @param newContents the new contents to set in the tab
+     */
+    public void setTabContents(String tabName, String newContents) {
+        // Placeholder, until we have actual editing in place
+        // for now, this method does nothing.
+    }
+
+    /**
+     * Returns the names of all currently open tabs.
+     *
+     * @return the names of all currently open tabs
+     */
+    public List<String> getTabNames() {
+        List<String> tabNames = new ArrayList<>(tabPane.getTabCount());
+        for (int i = 0; i < tabPane.getTabCount(); i++) {
+            tabNames.add(tabPane.getTitleAt(i));
+        }
+        return tabNames;
+    }
+
+    /**
+     * Invoked internally to show or hide tab header icons based on the user's preference in app config.
+     */
+    private void updateTabIcons() {
+        // Start by removing all icons:
+        for (int i = 0; i < tabPane.getTabCount(); i++) {
+            tabPane.setIconAt(i, null);
+        }
+
+        // If enabled, add icons at the configured size:
+        if (AppConfig.getInstance().isTabLockIconsEnabled()) {
+            int iconSize = AppConfig.getInstance().getTabIconSize();
+            for (int i = 0; i < tabPane.getTabCount(); i++) {
+                // We'll have to add smarts here once we add the ability to encrypt
+                // data... for now, just show the "unlocked" icon for all tabs:
+                tabPane.setIconAt(i, CryptTextResourceLoader.getUnlockIcon(iconSize));
+            }
+        }
     }
 
     /**
@@ -148,10 +278,14 @@ public final class MainWindow extends JFrame implements UIReloadable {
         if (isLinux) {
             setAlwaysOnTop(true); // cheesy trick to make this work on linux
         }
-        toFront();
-        requestFocus();
-        if (isLinux) {
-            setAlwaysOnTop(false); // linux mint cinnamon seems to ignore toFront() unless we do this
+        try {
+            toFront();
+            requestFocus();
+        }
+        finally {
+            if (isLinux) {
+                setAlwaysOnTop(false); // linux mint cinnamon seems to ignore toFront() unless we do this
+            }
         }
     }
 
@@ -180,6 +314,25 @@ public final class MainWindow extends JFrame implements UIReloadable {
         else {
             logger.info("Disabling single instance mode.");
             SingleInstanceManager.getInstance().release();
+        }
+    }
+
+    /**
+     * Invoked internally to add any extra components provided by extensions in the given position.
+     *
+     * @param position the position to get extra components for (e.g. left, right, top, bottom)
+     * @param borderLayoutPosition the corresponding BorderLayout position for the given position
+     */
+    private void addExtraComponents(ExtraComponentPosition position, String borderLayoutPosition) {
+        List<JComponent> extraComponents = CryptTextExtensionManager.getInstance().getExtraComponents(position);
+        ToggleableTabbedPane extraTabPane = new ToggleableTabbedPane();
+        if (extraComponents != null && ! extraComponents.isEmpty()) {
+            for (JComponent extraComponent : extraComponents) {
+                extraTabPane.add(extraComponent);
+            }
+            // Don't show the tab header row if there's only one component:
+            extraTabPane.setTabHeaderVisible(extraComponents.size() > 1);
+            add(extraTabPane, borderLayoutPosition);
         }
     }
 

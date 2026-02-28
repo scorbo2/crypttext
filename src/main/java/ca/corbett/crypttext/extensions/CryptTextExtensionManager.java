@@ -5,8 +5,11 @@ import ca.corbett.extras.properties.KeyStrokeProperty;
 import ca.corbett.crypttext.Version;
 import ca.corbett.updates.UpdateManager;
 
+import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
+import javax.swing.JPanel;
+import java.awt.Color;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -231,4 +234,24 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
         return null; // No extension supplied a decrypted version, so allow the application to handle it.
     }
 
+    /**
+     * Queries all loaded extensions to see if they have any extra components (typically panels) that they want
+     * to add around the main text area in the MainWindow. The position parameter indicates where the component
+     * should be added. Extensions that return a non-null component from this method will have that
+     * component added to the MainWindow in the specified position. Multiple extensions can return
+     * components for the same position, in which case all of those components will be added in load order sequence.
+     *
+     * @param position The position around the main text area where the component should be added.
+     * @return A list of 0 or more components supplied by enabled extensions for the specified position.
+     */
+    public List<JComponent> getExtraComponents(ExtraComponentPosition position) {
+        List<JComponent> list = new ArrayList<>();
+        for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
+            JComponent toAdd = extension.getExtraComponent(position);
+            if (toAdd != null) {
+                list.add(toAdd);
+            }
+        }
+        return list;
+    }
 }
