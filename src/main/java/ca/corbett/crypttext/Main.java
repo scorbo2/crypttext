@@ -19,6 +19,8 @@ import java.util.logging.Logger;
 
 /**
  * The main entry point for the CryptText application.
+ * GUI only - there is no command-line interface, but you can supply
+ * file(s) to be loaded on startup as command-line arguments.
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
@@ -26,8 +28,7 @@ public class Main {
 
     private static final String LOG_RESOURCE = "/ca/corbett/crypttext/logging.properties";
 
-    // TODO -- pick a random port number unique to your application, to avoid conflicts:
-    public static final int SINGLE_INSTANCE_PORT = 12345;
+    public static final int SINGLE_INSTANCE_PORT = 54551; // arbitrary random port choice
 
     public static void main(String[] args) {
         // Before we do anything else, set up logging:
@@ -83,27 +84,6 @@ public class Main {
             // Process any start arguments we were given:
             mainWindow.processStartArgs(Arrays.asList(args));
         });
-
-        // Alternatively, you could show a splash screen with a progress bar here while loading...
-        //SplashProgressWindow splashWindow = new SplashProgressWindow(Color.GRAY,  // Foreground
-        //                                                             Color.BLACK, // Background
-        //                                                             Resources.getLogo()); // Some logo image
-        //splashWindow.runWorker(new SimpleProgressWorker() {
-        //    @Override
-        //    public void run() {
-        //        fireProgressBegins(totalSteps);
-        //
-        //        // Do any lengthy startup tasks here:
-        //        for (int currentStep = 0; currentStep < totalSteps; currentStep++) {
-        //            // Load something here...
-        //            fireProgressUpdate(currentStep, "Loading something...");
-        //        }
-        //
-        //        // When done, show the main window on the EDT:
-        //        fireProgressComplete();
-        //        SwingUtilities.invokeLater(() -> MainWindow.getInstance().setVisible(true));
-        //    }
-        //});
     }
 
     /**
@@ -120,10 +100,8 @@ public class Main {
 
     /**
      * If an update sources json was provided, we can parse it here and make it automatically
-     * available to our ExtensionManager implementation. This will enable dynamic extension
-     * discovery and download at runtime with no further code changes required - just drop
-     * the update_sources.json file into the project root before building, and remember
-     * to add it to your installer.props file so that it gets included in the installer tarball.
+     * available to our ExtensionManager implementation. This enables dynamic extension
+     * discovery and download at runtime.
      */
     private static void parseUpdateSources() {
         Logger logger = Logger.getLogger(Main.class.getName());

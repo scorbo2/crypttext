@@ -2,6 +2,7 @@ package ca.corbett.crypttext;
 
 import ca.corbett.extras.ResourceLoader;
 
+import javax.swing.ImageIcon;
 import java.awt.image.BufferedImage;
 
 /**
@@ -18,37 +19,33 @@ public class CryptTextResourceLoader extends ResourceLoader {
     // For most resources:
     private static final String PREFIX = "ca/corbett/crypttext/";
 
-    // For our example image resources:
-    private static final String IMAGE_PATH = "example-images/";
+    // For image resources:
+    private static final String IMAGE_PATH = "images/";
 
-    // TODO: Define your resource paths here
-    //       Here is an example swing-extras logo path:
-    private static final String SE_LOGO_PATH = IMAGE_PATH + "swing-extras-icon.jpg";
+    private static final String SQUARE_ICON_PATH = IMAGE_PATH + "logo.png";
+    private static final String WIDE_LOGO_PATH = IMAGE_PATH + "logo_wide.jpg";
 
     private CryptTextResourceLoader() {
     }
 
     /**
-     * We can add convenient wrapper methods here, so that callers don't
-     * have to know or care about the resource paths. The alternative
-     * is that callers can directly call our parent class's static methods,
-     * like this, to retrieve specific resources:
-     * <pre>
-     *     logoImage = ResourceLoader.getImage("example-images/swing-extras-icon.jpg");
-     *
-     *     // Or, to scale to 32x32 and retrieve as an IconImage instead:
-     *     logoIcon = ResourceLoader.getIcon("example-images/swing-extras-icon.jpg", 32);
-     * </pre>
-     * <p>
-     * The benefit of adding wrapper methods here is that it makes the code more readable.
-     * We could also build a basic caching mechanism here, to avoid repeated loads.
-     * Here is an example wrapper method to retrieve the swing-extras logo image.
-     * </p>
-     * <p>
-     * TODO add your own wrapper methods as needed!
-     * </p>
+     * Returns an ImageIcon for a small, square logo, suitable for window icon use.
      */
-    public static BufferedImage getSwingExtrasIcon() {
-        return getImage(SE_LOGO_PATH);
+    public static ImageIcon getSquareIcon() {
+        return new ImageIcon(getSquareLogo());
+    }
+
+    /**
+     * Returns a BufferedImage for a small, square logo, suitable for window icon use.
+     */
+    public static BufferedImage getSquareLogo() {
+        return getImage(PREFIX + SQUARE_ICON_PATH);
+    }
+
+    /**
+     * Returns a BufferedImage for a wide logo, suitable for display in the about dialog header.
+     */
+    public static BufferedImage getWideLogo() {
+        return getImage(PREFIX + WIDE_LOGO_PATH);
     }
 }
