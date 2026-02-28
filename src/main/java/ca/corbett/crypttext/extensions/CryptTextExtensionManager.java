@@ -128,9 +128,7 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
     }
 
     /**
-     * Invoked before a file is loaded. Extensions can veto the load by returning false.
-     * Generally, when vetoing a load, an extension should also display a message to the
-     * user explaining why the load was vetoed.
+     * Allows any loaded extension to veto a file load.
      * <p>
      * If any extension vetoes a load, subsequent extensions in the load order sequence
      * are not sent this message.
@@ -149,9 +147,7 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
     }
 
     /**
-     * Invoked before a file is saved. Extensions can veto the save by returning false.
-     * Generally, when vetoing a save, an extension should also display a message to the
-     * user explaining why the save was vetoed.
+     * Allows any loaded extension to veto a file save.
      * <p>
      *     If any extension vetoes a save, subsequent extensions in the load order sequence
      *     are not sent this message.
@@ -171,8 +167,7 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
     }
 
     /**
-     * Invoked after a file is loaded. Extensions can override this method to be notified when a file is loaded.
-     * If you wish to veto a load, override fileWillLoad instead and return false.
+     * A simple notification sent to all loaded extensions that a file has been loaded.
      *
      * @param loaded The file that was just loaded.
      * @param loadedContents The decrypted contents of the file that was just loaded.
@@ -184,8 +179,7 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
     }
 
     /**
-     * Invoked after a file is saved. Extensions can override this method to be notified when a file is saved.
-     * If you wish to veto a save, override fileWillSave instead and return false.
+     * A simple notification sent to all loaded extensions that a file has been saved.
      *
      * @param saved The file that was just saved.
      */
@@ -196,10 +190,8 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
     }
 
     /**
-     * Invoked before text is encrypted. Extensions can return a non-null value to prevent the application
-     * from using its built-in encryption scheme to encrypt the data. The return in that case is a String
-     * representation of the encrypted data (typically base64-encoded, but this is not enforced).
-     * Returning null here will allow the application to handle encryption.
+     * Gives all loaded extensions an opportunity to override the application's built-in encryption
+     * scheme by returning a non-null (and typically base64-encoded) String representation of the encrypted data.
      * <p>
      *     The first extension that returns a non-null value from this method will prevent
      *     subsequent extensions in the load order sequence from being sent this message.
@@ -219,10 +211,8 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
     }
 
     /**
-     * Invoked before text is decrypted. Extensions can return a non-null value to prevent the application
-     * from using its built-in decryption scheme to decrypt the data. The return in that
-     * case is a String representation of the decrypted data.
-     * Returning null here will allow the application to handle decryption.
+     * Gives all loaded extensions an opportunity to override the application's built-in decryption
+     * scheme by returning a non-null String representation of the decrypted data.
      * <p>
      *     The first extension that returns a non-null value from this method will prevent
      *     subsequent extensions in the load order sequence from being sent this message.
