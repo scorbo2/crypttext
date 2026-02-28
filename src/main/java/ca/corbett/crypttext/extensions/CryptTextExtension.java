@@ -2,23 +2,16 @@ package ca.corbett.crypttext.extensions;
 
 import ca.corbett.extensions.AppExtension;
 
-import javax.swing.*;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+import java.io.File;
 import java.util.List;
 
 /**
- * This is the starting point for extensions for your application.
- * You can add application-specific hooks here as needed.
- * Some example hooks have been provided to give you an idea as to what's possible:
- * <ul>
- *     <li>handleKeyEvent() - Extensions can register to receive and handle keyboard shortcuts.</li>
- *     <li>getTopLevelMenus() - Extensions can add their own top-level menus to the main menu.</li>
- *     <li>getMenuItems() - Extensions can add menu items to existing top-level menus.</li>
- * </ul>
- * <p>
- *     Whatever functionality your application offers, try to think of how that functionality could be
- *     augmented or even replaced by an extension. Then add appropriate hooks here to allow extensions
- *     to interact with your application in those ways!
- * </p>
+ * This is the starting point for extensions for the CryptText application.
+ * Extensions can supply instances of this class, which will be loaded by the CryptTextExtensionManager and
+ * invoked at various points in the application to allow extensions to add functionality. Review the
+ * method Javadocs in this class to learn what functionality you can provide via extensions!
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
@@ -47,4 +40,91 @@ public abstract class CryptTextExtension extends AppExtension {
         return null;
     }
 
+    /**
+     * Invoked before a file is loaded. Extensions can veto the load by returning false.
+     * Generally, when vetoing a load, an extension should also display a message to the
+     * user explaining why the load was vetoed.
+     * <p>
+     * If any extension vetoes a load, subsequent extensions in the load order sequence
+     * are not sent this message.
+     * </p>
+     *
+     * @param toLoad The file that is about to be loaded.
+     * @return true to allow the load to proceed, or false to veto the load.
+     */
+    public boolean fileWillLoad(File toLoad) {
+        return true;
+    }
+
+    /**
+     * Invoked before a file is saved. Extensions can veto the save by returning false.
+     * Generally, when vetoing a save, an extension should also display a message to the
+     * user explaining why the save was vetoed.
+     * <p>
+     *     If any extension vetoes a save, subsequent extensions in the load order sequence
+     *     are not sent this message.
+     * </p>
+     *
+     * @param toSave The file that is about to be saved.
+     * @param newContents The new (pre-encryption) contents that are about to be written to the file.
+     * @return true to allow the save to proceed, or false to veto the save.
+     */
+    public boolean fileWillSave(File toSave, String newContents) {
+        return true;
+    }
+
+    /**
+     * Invoked after a file is loaded. Extensions can override this method to be notified when a file is loaded.
+     * If you wish to veto a load, override fileWillLoad instead and return false.
+     *
+     * @param loaded The file that was just loaded.
+     * @param loadedContents The decrypted contents of the file that was just loaded.
+     */
+    public void fileLoaded(File loaded, String loadedContents) {
+        // No-op by default. Extensions can override this method to be notified when a file is loaded.
+    }
+
+    /**
+     * Invoked after a file is saved. Extensions can override this method to be notified when a file is saved.
+     * If you wish to veto a save, override fileWillSave instead and return false.
+     *
+     * @param saved The file that was just saved.
+     */
+    public void fileSaved(File saved) {
+        // No-op by default. Extensions can override this method to be notified when a file is saved.
+    }
+
+    /**
+     * Invoked before text is encrypted. Extensions can return a non-null value to prevent the application
+     * from using its built-in encryption scheme to encrypt the data. The return in that case is a String
+     * representation of the encrypted data (typically base64-encoded, but this is not enforced).
+     * Returning null here will allow the application to handle encryption.
+     * <p>
+     *     The first extension that returns a non-null value from this method will prevent
+     *     subsequent extensions in the load order sequence from being sent this message.
+     * </p>
+     *
+     * @param textToEncrypt The plaintext that is about to be encrypted.
+     * @return an encrypted version of the text, or null to allow the application to handle encryption.
+     */
+    public String textWillEncrypt(String textToEncrypt) {
+        return null;
+    }
+
+    /**
+     * Invoked before text is decrypted. Extensions can return a non-null value to prevent the application
+     * from using its built-in decryption scheme to decrypt the data. The return in that
+     * case is a String representation of the decrypted data.
+     * Returning null here will allow the application to handle decryption.
+     * <p>
+     *     The first extension that returns a non-null value from this method will prevent
+     *     subsequent extensions in the load order sequence from being sent this message.
+     * </p>
+     *
+     * @param textToDecrypt The encrypted text that is about to be decrypted (typically base64 encoded).
+     * @return a decrypted version of the text, or null to allow the application to handle decryption.
+     */
+    public String textWillDecrypt(String textToDecrypt) {
+        return null;
+    }
 }

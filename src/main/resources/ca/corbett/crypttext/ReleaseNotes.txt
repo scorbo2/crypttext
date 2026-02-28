@@ -1,5 +1,6 @@
 CryptText Release Notes
 ==============================================
 
-Version 1.0-SNAPSHOT
-  - TODO: release notes for CryptText 1.0-SNAPSHOT go here.
+Version 1.0 - [TODO release date here] Initial release
+  - TODO: release notes for CryptText 1.0 go here.
+  #1 - Add extension hooks for 1.0 release.
