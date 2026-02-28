@@ -2,5 +2,6 @@ CryptText Release Notes
 ==============================================
 
 Version 1.0 - [TODO release date here] Initial release
+  #5 - Add main editor tab view with basic configuration options.
   #3 - Address archetype TODOs.
   #1 - Add extension hooks for 1.0 release.

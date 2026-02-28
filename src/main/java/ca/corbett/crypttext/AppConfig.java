@@ -1,9 +1,11 @@
 package ca.corbett.crypttext;
 
+import ca.corbett.crypttext.ui.actions.NewTabAction;
 import ca.corbett.extensions.AppProperties;
 import ca.corbett.extras.io.KeyStrokeManager;
 import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
+import ca.corbett.extras.properties.IntegerProperty;
 import ca.corbett.extras.properties.KeyStrokeProperty;
 import ca.corbett.extras.properties.LookAndFeelProperty;
 import ca.corbett.crypttext.ui.actions.AboutAction;
@@ -22,8 +24,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This class manages application configuration for your application, and provides a convenient
- * way to launch both the application properties dialog and also the extension manager dialog.
+ * Centralizes and manages application configuration properties.
+ * Extensions can supply additional properties as needed.
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
@@ -53,6 +55,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
      */
     public static final String KEYSTROKE_PREFIX = "Keystrokes.";
 
+    private static final String KEY_NEW_TAB = KEYSTROKE_PREFIX + "General.newTab";
     private static final String KEY_PROPERTIES = KEYSTROKE_PREFIX + "General.properties";
     private static final String KEY_EXTENSIONS = KEYSTROKE_PREFIX + "General.extensionManager";
     private static final String KEY_LOG_CONSOLE = KEYSTROKE_PREFIX + "General.logConsole";
@@ -64,12 +67,15 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
 
     private LookAndFeelProperty lookAndFeelProp;
     private BooleanProperty enableSingleInstance;
+    private BooleanProperty enableTabLockIconsProp;
+    private IntegerProperty tabIconSizeProp;
 
     // These will be used in the menu bar and with KeyStrokeManager:
     // (they could also be added to buttons or popup menus as needed)
     // (the advantage of centralizing them here is that they can be
     //  disabled/enabled/renamed or have their shortcut reassigned,
     //  and the changes will take effect wherever the action is used)
+    private Action newTabAction;
     private Action propertiesAction;
     private Action extensionManagerAction;
     private Action logConsoleAction;
@@ -103,6 +109,10 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         return AppProperties.peek(PROPS_FILE, propName);
     }
 
+    public Action getNewTabAction() {
+        return newTabAction;
+    }
+
     public Action getPropertiesAction() {
         return propertiesAction;
     }
@@ -131,6 +141,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         List<KeyStrokeProperty> keyProps = new ArrayList<>();
 
         // Add the ones we control:
+        keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_NEW_TAB));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_PROPERTIES));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_EXTENSIONS));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_LOG_CONSOLE));
@@ -141,6 +152,20 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         keyProps.addAll(CryptTextExtensionManager.getInstance().getKeyStrokeProperties());
 
         return keyProps;
+    }
+
+    /**
+     * Reports whether the user has enabled lock icons on tabs in the UI.
+     */
+    public boolean isTabLockIconsEnabled() {
+        return enableTabLockIconsProp.getValue();
+    }
+
+    /**
+     * If tab lock icons are enabled, this returns the size (in pixels) that the user has selected for them.
+     */
+    public int getTabIconSize() {
+        return tabIconSizeProp.getValue();
     }
 
     /**
@@ -166,6 +191,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         props.add(enableSingleInstance);
 
         // Let's create all our actions:
+        newTabAction = new NewTabAction();
         propertiesAction = new PropertiesAction();
         extensionManagerAction = new ExtensionManagerAction();
         logConsoleAction = new LogConsoleAction();
@@ -175,7 +201,15 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         // And we can set up our keyboard shortcuts while we're at it:
         props.addAll(createKeyboardProperties());
 
-        // TODO add the rest of your application configuration here.
+        enableTabLockIconsProp = new BooleanProperty("UI.Editor tabs.showLockIcons",
+                                                     "Show lock icons on editor tabs",
+                                                     true);
+        props.add(enableTabLockIconsProp);
+
+        tabIconSizeProp = new IntegerProperty("UI.Editor tabs.tabIconSize",
+                                              "Tab Icon Size (px)",
+                                              16, 8, 64, 2);
+        props.add(tabIconSizeProp);
 
         return props;
     }
@@ -183,6 +217,10 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private List<AbstractProperty> createKeyboardProperties() {
         List<AbstractProperty> props = new ArrayList<>();
 
+        props.add(new KeyStrokeProperty(KEY_NEW_TAB, "New Tab:",
+                                        KeyStrokeManager.parseKeyStroke("Ctrl+N"),
+                                        newTabAction)
+                          .setAllowBlank(true));
         props.add(new KeyStrokeProperty(KEY_PROPERTIES, "Properties Dialog:",
                                         KeyStrokeManager.parseKeyStroke("Ctrl+P"),
                                         propertiesAction)
