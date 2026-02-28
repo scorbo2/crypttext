@@ -160,7 +160,7 @@ public final class MainWindow extends JFrame implements UIReloadable {
         addExtraComponents(ExtraComponentPosition.RIGHT, BorderLayout.EAST);
         addExtraComponents(ExtraComponentPosition.TOP, BorderLayout.NORTH);
         addExtraComponents(ExtraComponentPosition.BOTTOM, BorderLayout.SOUTH);
-        
+
         // Ensure the updated content pane is laid out and repainted immediately.
         getContentPane().revalidate();
         getContentPane().repaint();
@@ -191,10 +191,10 @@ public final class MainWindow extends JFrame implements UIReloadable {
         if (AppConfig.getInstance().isTabLockIconsEnabled()) {
             int iconSize = AppConfig.getInstance().getTabIconSize();
             Icon icon = CryptTextResourceLoader.getUnlockIcon(iconSize);
-            tabPane.addTab(title, icon, new JPanel());
+            tabPane.addTab(title, icon, tabComponent);
         }
         else {
-            tabPane.addTab(title, new JPanel());
+            tabPane.addTab(title, tabComponent);
         }
     }
 
