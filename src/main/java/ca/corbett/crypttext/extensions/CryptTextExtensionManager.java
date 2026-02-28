@@ -3,21 +3,27 @@ package ca.corbett.crypttext.extensions;
 import ca.corbett.extensions.ExtensionManager;
 import ca.corbett.extras.properties.KeyStrokeProperty;
 import ca.corbett.crypttext.Version;
-import ca.corbett.crypttext.extensions.builtin.TestExtension;
 import ca.corbett.updates.UpdateManager;
 
-import javax.swing.*;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 
 /**
- * Here we extend the ExtensionManager class with our custom application extension
- * class: CryptTextExtension. This is the starting point for extensions for your application.
- * You can add application-specific hooks here as needed. Just follow the pattern
- * in the examples provided: when the application invokes an extension hook here,
- * we simply iterate through all enabled extensions and invoke the corresponding
- * method on each extension.
+ * This class manages loaded extensions and is responsible for invoking them when needed.
+ * Extension hooks are defined in the CryptTextExtension class, and this manager will invoke
+ * those hooks at the appropriate times.
+ * <p>
+ *     <b>Extension load order matters!</b> - several of the extension hooks will stop as
+ *     soon as one extension supplies a meaningful value. For example, if one extension
+ *     vetoes a file load, subsequent extensions will not be sent the fileWillLoad message.
+ *     Extension load order can be controlled via the ext-load-order.txt file as described
+ *     in our parent class Javadocs. By default, if no ext-load-order.txt file is supplied,
+ *     extensions are loaded alphabetically by their jar file names.
+ * </p>
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
@@ -52,7 +58,7 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
      */
     public void loadAll() {
         // Load our built-in extensions first:
-        addExtension(new TestExtension(), true);
+        // TODO built-ins get loaded here... addExtension(new WhateverExtension(), true);
 
         // Now look for external extensions in jar files in our EXTENSIONS_DIR:
         try {
@@ -119,6 +125,120 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
             }
         }
         return list;
+    }
+
+    /**
+     * Invoked before a file is loaded. Extensions can veto the load by returning false.
+     * Generally, when vetoing a load, an extension should also display a message to the
+     * user explaining why the load was vetoed.
+     * <p>
+     * If any extension vetoes a load, subsequent extensions in the load order sequence
+     * are not sent this message.
+     * </p>
+     *
+     * @param toLoad The file that is about to be loaded.
+     * @return true to allow the load to proceed, or false to veto the load.
+     */
+    public boolean fileWillLoad(File toLoad) {
+        for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
+            if (!extension.fileWillLoad(toLoad)) {
+                return false; // if any extension vetoes, we're done.
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Invoked before a file is saved. Extensions can veto the save by returning false.
+     * Generally, when vetoing a save, an extension should also display a message to the
+     * user explaining why the save was vetoed.
+     * <p>
+     *     If any extension vetoes a save, subsequent extensions in the load order sequence
+     *     are not sent this message.
+     * </p>
+     *
+     * @param toSave The file that is about to be saved.
+     * @param newContents The new (pre-encryption) contents that are about to be written to the file.
+     * @return true to allow the save to proceed, or false to veto the save.
+     */
+    public boolean fileWillSave(File toSave, String newContents) {
+        for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
+            if (!extension.fileWillSave(toSave, newContents)) {
+                return false; // if any extension vetoes, we're done.
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Invoked after a file is loaded. Extensions can override this method to be notified when a file is loaded.
+     * If you wish to veto a load, override fileWillLoad instead and return false.
+     *
+     * @param loaded The file that was just loaded.
+     * @param loadedContents The decrypted contents of the file that was just loaded.
+     */
+    public void fileLoaded(File loaded, String loadedContents) {
+        for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
+            extension.fileLoaded(loaded, loadedContents);
+        }
+    }
+
+    /**
+     * Invoked after a file is saved. Extensions can override this method to be notified when a file is saved.
+     * If you wish to veto a save, override fileWillSave instead and return false.
+     *
+     * @param saved The file that was just saved.
+     */
+    public void fileSaved(File saved) {
+        for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
+            extension.fileSaved(saved);
+        }
+    }
+
+    /**
+     * Invoked before text is encrypted. Extensions can return a non-null value to prevent the application
+     * from using its built-in encryption scheme to encrypt the data. The return in that case is a String
+     * representation of the encrypted data (typically base64-encoded, but this is not enforced).
+     * Returning null here will allow the application to handle encryption.
+     * <p>
+     *     The first extension that returns a non-null value from this method will prevent
+     *     subsequent extensions in the load order sequence from being sent this message.
+     * </p>
+     *
+     * @param textToEncrypt The plaintext that is about to be encrypted.
+     * @return an encrypted version of the text, or null to allow the application to handle encryption.
+     */
+    public String textWillEncrypt(String textToEncrypt) {
+        for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
+            String result = extension.textWillEncrypt(textToEncrypt);
+            if (result != null) {
+                return result; // if any extension returns a non-null value, we're done.
+            }
+        }
+        return null; // No extension supplied an encrypted version, so allow the application to handle it.
+    }
+
+    /**
+     * Invoked before text is decrypted. Extensions can return a non-null value to prevent the application
+     * from using its built-in decryption scheme to decrypt the data. The return in that
+     * case is a String representation of the decrypted data.
+     * Returning null here will allow the application to handle decryption.
+     * <p>
+     *     The first extension that returns a non-null value from this method will prevent
+     *     subsequent extensions in the load order sequence from being sent this message.
+     * </p>
+     *
+     * @param textToDecrypt The encrypted text that is about to be decrypted (typically base64 encoded).
+     * @return a decrypted version of the text, or null to allow the application to handle decryption.
+     */
+    public String textWillDecrypt(String textToDecrypt) {
+        for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
+            String result = extension.textWillDecrypt(textToDecrypt);
+            if (result != null) {
+                return result; // if any extension returns a non-null value, we're done.
+            }
+        }
+        return null; // No extension supplied a decrypted version, so allow the application to handle it.
     }
 
 }
