@@ -1,0 +1,5 @@
+CryptText Release Notes
+==============================================
+
+Version 1.0-SNAPSHOT
+  - TODO: release notes for CryptText 1.0-SNAPSHOT go here.

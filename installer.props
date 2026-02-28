@@ -1,0 +1,55 @@
+# If you are building on a linux-based system, and if you have the
+# make-installer.sh script installed (from https://github.com/scorbo2/install-scripts),
+# this this config will be used to autogenerate an installer tarball for your application.
+# This is already wired up in the supplied pom.xml file, so it will run on every maven build.
+#
+# ALL PATHS ARE RELATIVE TO PROJECT ROOT
+
+# Currently we are limited to "tarball" (.tar.gz) generation.
+# In future, may support RPM or DEB package generation.
+FORMAT="tarball"
+
+APPLICATION="CryptText"
+VERSION="1.0-SNAPSHOT"
+
+# TODO Change this to an appropriate category for your app!
+CATEGORY="Utility"
+# Possible categories:
+# - Development - Programming tools, IDEs, editors
+# - TextEditor - Text editors specifically
+# - Office - Office applications, document editors
+# - Graphics - Image viewers, editors
+# - AudioVideo - Media players, editors
+# - Game - Games
+# - Network - Web browsers, email clients
+# - Utility - System utilities, tools
+# - Settings - Configuration tools
+# - System - System administration tools
+#
+# Additional Categories (for further refinement):
+#
+# - Java - Java applications
+# - FileManager - File management tools
+# - Viewer - File viewers
+# - Editor - Generic editors
+
+# TODO optionally, you can supply a project URL.
+# If present, a README will be generated and included in the generated tarball.
+PROJECT_URL=""
+
+# Extra memory settings like Xmx and Xms can be specified here:
+JAVAMEM=
+
+JAR="target/crypttext-${VERSION}.jar"
+OUTPUT_DIR=target
+
+# Space-separated list of files and dirs to include:
+TO_COPY="target/lib"
+TO_COPY="${TO_COPY} src/main/resources/ca/corbett/crypttext/ReleaseNotes.txt"
+
+# TODO uncomment this if you wish to support dynamic extension discovery and download:
+#TO_COPY="${TO_COPY} update_sources.json"
+
+# TODO uncomment this to automatically generate a desktop icon for your app:
+#      (the path can be adjusted, but the file must be named "logo.png" and should be square)
+#TO_COPY="${TO_COPY} src/main/resources/ca/corbett/crypttext/images/logo.png"
