@@ -2,9 +2,10 @@ package ca.corbett.crypttext.ui;
 
 import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
-import ca.corbett.crypttext.ui.actions.*;
 
-import javax.swing.*;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import java.awt.event.KeyEvent;
 import java.util.List;
 
