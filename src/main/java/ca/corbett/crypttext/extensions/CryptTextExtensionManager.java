@@ -1,8 +1,8 @@
 package ca.corbett.crypttext.extensions;
 
+import ca.corbett.crypttext.Version;
 import ca.corbett.extensions.ExtensionManager;
 import ca.corbett.extras.properties.KeyStrokeProperty;
-import ca.corbett.crypttext.Version;
 import ca.corbett.updates.UpdateManager;
 
 import javax.swing.JComponent;

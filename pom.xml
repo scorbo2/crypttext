@@ -60,6 +60,13 @@
                 </executions>
             </plugin>
 
+            <!-- Maven Surefire Plugin for running tests with JUnit 5 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0-M9</version>
+            </plugin>
+
             <!-- Build an executable jar with a manifest pointing to the dependencies in lib/ -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

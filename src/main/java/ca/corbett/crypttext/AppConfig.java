@@ -1,6 +1,13 @@
 package ca.corbett.crypttext;
 
+import ca.corbett.crypttext.extensions.CryptTextExtension;
+import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
+import ca.corbett.crypttext.ui.actions.AboutAction;
+import ca.corbett.crypttext.ui.actions.ExitAction;
+import ca.corbett.crypttext.ui.actions.ExtensionManagerAction;
+import ca.corbett.crypttext.ui.actions.LogConsoleAction;
 import ca.corbett.crypttext.ui.actions.NewTabAction;
+import ca.corbett.crypttext.ui.actions.PropertiesAction;
 import ca.corbett.extensions.AppProperties;
 import ca.corbett.extras.io.KeyStrokeManager;
 import ca.corbett.extras.properties.AbstractProperty;
@@ -8,15 +15,7 @@ import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.IntegerProperty;
 import ca.corbett.extras.properties.KeyStrokeProperty;
 import ca.corbett.extras.properties.LookAndFeelProperty;
-import ca.corbett.crypttext.ui.actions.AboutAction;
-import ca.corbett.crypttext.ui.actions.ExitAction;
-import ca.corbett.crypttext.ui.actions.ExtensionManagerAction;
-import ca.corbett.crypttext.ui.actions.LogConsoleAction;
-import ca.corbett.crypttext.ui.actions.PropertiesAction;
 import com.formdev.flatlaf.FlatLightLaf;
-
-import ca.corbett.crypttext.extensions.CryptTextExtension;
-import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 
 import javax.swing.Action;
 import java.io.File;
@@ -69,6 +68,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private BooleanProperty enableSingleInstance;
     private BooleanProperty enableTabLockIconsProp;
     private IntegerProperty tabIconSizeProp;
+    private BooleanProperty closeLastTabExitsProp;
 
     // These will be used in the menu bar and with KeyStrokeManager:
     // (they could also be added to buttons or popup menus as needed)
@@ -169,6 +169,14 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     }
 
     /**
+     * Reports whether the user wishes to exit the application when the last remaining
+     * editor tab is closed. If false, closing the last tab leaves you with a blank window.
+     */
+    public boolean isExitOnCloseLastTabEnabled() {
+        return closeLastTabExitsProp.getValue();
+    }
+
+    /**
      * This is where you can define the configuration properties for your application.
      * These properties will be displayed in the PropertiesDialog, and persisted
      * to the properties file automatically.
@@ -210,6 +218,11 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
                                               "Tab Icon Size (px)",
                                               16, 8, 64, 2);
         props.add(tabIconSizeProp);
+
+        closeLastTabExitsProp = new BooleanProperty("UI.Editor tabs.closeLastTabExits",
+                                                    "Exit application when the last editor tab is closed",
+                                                    true); // completely arbitrary default value here
+        props.add(closeLastTabExitsProp);
 
         return props;
     }

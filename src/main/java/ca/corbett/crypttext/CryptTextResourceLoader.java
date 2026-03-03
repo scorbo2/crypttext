@@ -26,6 +26,8 @@ public class CryptTextResourceLoader extends ResourceLoader {
     private static final String WIDE_LOGO_PATH = IMAGE_PATH + "logo_wide.jpg";
     private static final String LOCK_ICON_PATH = IMAGE_PATH + "icon_lock.png";
     private static final String UNLOCK_ICON_PATH = IMAGE_PATH + "icon_unlock.png";
+    private static final String CLOSE_CLEAN_ICON_PATH = IMAGE_PATH + "icon_close_clean.png";
+    private static final String CLOSE_DIRTY_ICON_PATH = IMAGE_PATH + "icon_close_dirty.png";
 
     private CryptTextResourceLoader() {
     }
@@ -63,5 +65,19 @@ public class CryptTextResourceLoader extends ResourceLoader {
      */
     public static ImageIcon getUnlockIcon(int size) {
         return getIcon(PREFIX + UNLOCK_ICON_PATH, size);
+    }
+
+    /**
+     * Returns an icon representing a "close" action for something that has no unsaved changes.
+     */
+    public static ImageIcon getCloseCleanIcon(int size) {
+        return getIcon(PREFIX + CLOSE_CLEAN_ICON_PATH, size);
+    }
+
+    /**
+     * Returns an icon representing a "close" action for something that has unsaved changes.
+     */
+    public static ImageIcon getCloseDirtyIcon(int size) {
+        return getIcon(PREFIX + CLOSE_DIRTY_ICON_PATH, size);
     }
 }

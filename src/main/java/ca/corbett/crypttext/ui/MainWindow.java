@@ -16,17 +16,16 @@ import ca.corbett.extras.logging.LogConsoleStyle;
 import ca.corbett.extras.logging.LogConsoleTheme;
 import ca.corbett.extras.properties.KeyStrokeProperty;
 
-import javax.swing.Icon;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.JTabbedPane;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -40,9 +39,9 @@ public final class MainWindow extends JFrame implements UIReloadable {
     private boolean isSingleInstanceModeEnabled;
     private final MenuManager menuManager;
     private final KeyStrokeManager keyStrokeManager;
-    private final JTabbedPane tabPane;
-    private int untitledTabCount = 1; // for generating default tab titles like "Untitled 1", "Untitled 2", etc.
+    private final EditorTabPane editorTabPane;
     private MessageUtil messageUtil;
+    private final List<EditorTab> editorTabs = new ArrayList<>();
 
     private MainWindow() {
         setTitle(Version.FULL_NAME);
@@ -50,13 +49,14 @@ public final class MainWindow extends JFrame implements UIReloadable {
         setSize(800, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         addWindowListener(new WindowCloseHandler());
+        addTextManagerListeners();
         keyStrokeManager = new KeyStrokeManager(this);
         menuManager = new MenuManager();
         setJMenuBar(menuManager.getMainMenuBar());
         UIReloadAction.getInstance().registerReloadable(this);
         isSingleInstanceModeEnabled = AppConfig.getInstance().isSingleInstanceEnabled();
         configureLogConsole();
-        tabPane = new JTabbedPane();
+        editorTabPane = new EditorTabPane();
         setLayout(new BorderLayout());
 
         // We will eventually support command-line args for opening specific files on launch.
@@ -124,8 +124,37 @@ public final class MainWindow extends JFrame implements UIReloadable {
         logger.info("Shutting down: MainWindow cleanup invoked.");
         CryptTextExtensionManager.getInstance().deactivateAll();
 
-        // Do whatever cleanup your application requires here...
-        // Close db connections, save window state, commit unsaved data, etc.
+        // There is no "cancel" option possible here, because this method is invoked
+        // when the application is definitely about to close (for example, via UpdateManager
+        // when we do a restart to pick up extension changes). But we can still do
+        // a basic "save changes?" prompt with yes/no options.
+        boolean isAnyTabDirty = false;
+        for (EditorTab editorTab : editorTabs) {
+            if (editorTab.isDirty()) {
+                isAnyTabDirty = true;
+                break;
+            }
+        }
+        if (isAnyTabDirty) {
+            if (getMessageUtil().askYesNo("Save changes?",
+                                          "Save changes before exiting?") == MessageUtil.YES) {
+                for (EditorTab editorTab : editorTabs) {
+                    if (editorTab.isDirty()) {
+                        try {
+                            editorTab.save();
+                        }
+                        catch (IOException ioe) {
+                            // Just log it at this point... we are exiting:
+                            logger.log(Level.SEVERE, "Error saving tab \""
+                                               + editorTab.getName()
+                                               + "\" during cleanup: "
+                                               + ioe.getMessage(),
+                                       ioe);
+                        }
+                    }
+                }
+            }
+        }
 
         logger.info("Cleanup completed.");
     }
@@ -149,13 +178,13 @@ public final class MainWindow extends JFrame implements UIReloadable {
         menuManager.rebuildAll();
 
         // User may have enabled or disabled the option to show lock icons on tabs:
-        updateTabIcons();
+        editorTabPane.updateTabIcons();
 
         // Our list of extra components around the main tab pane may have changed,
         // if extensions were installed/uninstalled/enabled/disabled, so let's
         // rebuild the whole content pane from scratch:
         getContentPane().removeAll();
-        add(tabPane, BorderLayout.CENTER);
+        add(editorTabPane, BorderLayout.CENTER);
         addExtraComponents(ExtraComponentPosition.LEFT, BorderLayout.WEST);
         addExtraComponents(ExtraComponentPosition.RIGHT, BorderLayout.EAST);
         addExtraComponents(ExtraComponentPosition.TOP, BorderLayout.NORTH);
@@ -167,93 +196,19 @@ public final class MainWindow extends JFrame implements UIReloadable {
     }
 
     /**
-     * Creates a new, untitled tab.
+     * Returns the EditorTabPane instance for this main window.
+     */
+    public EditorTabPane getEditorTabPane() {
+        return editorTabPane;
+    }
+
+    /**
+     * Shorthand for getEditorTabPane().newTab() - creates a new, blank tab in the main editor tab pane.
      */
     public void newTab() {
-        newTab(null);
+        editorTabPane.newTextTab();
     }
 
-    /**
-     * Creates a new tab with the given title. If the title is null,
-     * a default title will be assigned to the tab (e.g. "Untitled 1", "Untitled 2", etc.)
-     *
-     * @param title the title to assign to the new tab, or null for a default title
-     */
-    public void newTab(String title) {
-        if (title == null) {
-            title = "Untitled " + untitledTabCount++;
-        }
-
-        // This will be our editor pane eventually, for now it's just a blank panel:
-        JComponent tabComponent = new JPanel();
-
-        // Render the tab with or without an icon depending on the user's preference in app config:
-        if (AppConfig.getInstance().isTabLockIconsEnabled()) {
-            int iconSize = AppConfig.getInstance().getTabIconSize();
-            Icon icon = CryptTextResourceLoader.getUnlockIcon(iconSize);
-            tabPane.addTab(title, icon, tabComponent);
-        }
-        else {
-            tabPane.addTab(title, tabComponent);
-        }
-    }
-
-    /**
-     * Returns the contents of the tab with the given name, or null if no such tab exists.
-     *
-     * @param name the name of the tab to get the contents of
-     * @return the contents of the tab with the given name, or null if no such tab exists
-     */
-    public String getTabContents(String name) {
-        // Placeholder, until we have actual editing in place
-        // for now, we return empty string for all inputs:
-        return "";
-    }
-
-    /**
-     * Sets the contents of the named tab to the given value.
-     * If no such tab exists, this method does nothing.
-     *
-     * @param tabName the name of the tab to set the contents of
-     * @param newContents the new contents to set in the tab
-     */
-    public void setTabContents(String tabName, String newContents) {
-        // Placeholder, until we have actual editing in place
-        // for now, this method does nothing.
-    }
-
-    /**
-     * Returns the names of all currently open tabs.
-     *
-     * @return the names of all currently open tabs
-     */
-    public List<String> getTabNames() {
-        List<String> tabNames = new ArrayList<>(tabPane.getTabCount());
-        for (int i = 0; i < tabPane.getTabCount(); i++) {
-            tabNames.add(tabPane.getTitleAt(i));
-        }
-        return tabNames;
-    }
-
-    /**
-     * Invoked internally to show or hide tab header icons based on the user's preference in app config.
-     */
-    private void updateTabIcons() {
-        // Start by removing all icons:
-        for (int i = 0; i < tabPane.getTabCount(); i++) {
-            tabPane.setIconAt(i, null);
-        }
-
-        // If enabled, add icons at the configured size:
-        if (AppConfig.getInstance().isTabLockIconsEnabled()) {
-            int iconSize = AppConfig.getInstance().getTabIconSize();
-            for (int i = 0; i < tabPane.getTabCount(); i++) {
-                // We'll have to add smarts here once we add the ability to encrypt
-                // data... for now, just show the "unlocked" icon for all tabs:
-                tabPane.setIconAt(i, CryptTextResourceLoader.getUnlockIcon(iconSize));
-            }
-        }
-    }
 
     /**
      * Sets up our KeyStrokeManager with the appropriate KeyStrokes from app config.
@@ -366,6 +321,14 @@ public final class MainWindow extends JFrame implements UIReloadable {
         style.setFontColor(fontColor);
         style.setIsBold(true);
         return style;
+    }
+
+    /**
+     * Invoked internally to configure our TextManager with vetoable listeners
+     * from our extension manager. This gives extensions a chance to veto
+     * all load and save operations, based on whatever criteria they want.
+     */
+    private void addTextManagerListeners() {
     }
 
     /**
