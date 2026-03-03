@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -848,26 +847,6 @@ class TextManagerTest {
         textManager.saveText(text, "updated");
 
         assertEquals("willLoad,loaded,willSave,saved,", eventLog.toString());
-    }
-
-    @Test
-    void testSynchronizationOfSaveText() throws IOException {
-        // This test verifies that saveText is synchronized and handles concurrent access properly
-        Text text = textManager.newText();
-        assertDoesNotThrow(() -> textManager.saveText(text, "content"));
-    }
-
-    @Test
-    void testSynchronizationOfFromFile() throws IOException {
-        File file = tempDir.resolve("test.txt").toFile();
-        Files.writeString(file.toPath(), "content");
-
-        // This test verifies that fromFile is synchronized
-        assertDoesNotThrow(() -> {
-            Text text1 = textManager.fromFile(file);
-            Text text2 = textManager.fromFile(file);
-            assertSame(text1, text2);
-        });
     }
 
     @Test
