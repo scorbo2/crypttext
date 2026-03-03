@@ -33,6 +33,10 @@ public class TextManager {
         this(new File(System.getProperty("java.io.tmpdir")));
     }
 
+    /**
+     * Creates a new TextManager instance using the given scratch directory.
+     * The given directory must exist and be writable.
+     */
     public TextManager(File scratchDir) {
         if (scratchDir == null || !scratchDir.exists() || !scratchDir.isDirectory() || !scratchDir.canWrite()) {
             throw new IllegalArgumentException("scratch dir must be a valid, writable directory.");
@@ -44,6 +48,9 @@ public class TextManager {
         return textList.isEmpty();
     }
 
+    /**
+     * Returns the number of Text instances in our cache.
+     */
     public int size() {
         return textList.size();
     }
@@ -58,13 +65,13 @@ public class TextManager {
         textList.remove(text);
         if (isScratchFile(text.getSourceFile())) {
             if (!text.getSourceFile().delete()) {
-                throw new IOException("Unable to delete temp file: " + text.getSourceFile().getAbsolutePath());
+                throw new IOException("Unable to delete scratch file: " + text.getSourceFile().getAbsolutePath());
             }
         }
     }
 
     /**
-     * Empties the cache and performs cleanup of any file in the system temp directory.
+     * Empties the cache and performs cleanup of any file in the scratch directory.
      * Does not fire events! Cannot be vetoed!
      */
     public void clear() throws IOException {
@@ -85,13 +92,13 @@ public class TextManager {
      * Create a new, blank Text object and add it to the list of Texts managed by this class.
      * No events are fired from this method - it is not vetoable.
      * <p>
-     * The new Text instance will be associated with a file in the system temp directory.
+     * The new Text instance will be associated with a file in the scratch directory.
      * Invoking saveText() on the returned instance will save to that file.
      * A more common use case would be newText() followed by saveTextAs() to specify the save location.
      * </p>
      */
     public Text newText() throws IOException {
-        File sourceFile = File.createTempFile(Version.NAME, ".txt");
+        File sourceFile = File.createTempFile(Version.NAME, ".txt", scratchDir);
         Text newText = new Text("", sourceFile);
         textList.add(newText);
         return newText;
