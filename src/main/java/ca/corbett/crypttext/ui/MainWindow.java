@@ -146,7 +146,7 @@ public final class MainWindow extends JFrame implements UIReloadable {
                         catch (IOException ioe) {
                             // Just log it at this point... we are exiting:
                             logger.log(Level.SEVERE, "Error saving tab \""
-                                               + editorTab.getName()
+                                               + editorTab.getTabName()
                                                + "\" during cleanup: "
                                                + ioe.getMessage(),
                                        ioe);
