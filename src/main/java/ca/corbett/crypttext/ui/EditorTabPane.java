@@ -105,7 +105,7 @@ public class EditorTabPane extends JTabbedPane {
         }
 
         // Check if a save is needed, and prompt if so:
-        if (editorTab.isDirty() || (editorTab.isScratchFile() && !editorTab.getTextInstance().getText().isEmpty())) {
+        if (editorTab.isDirty() || (editorTab.isScratchFile() && !editorTab.getCurrentText().isEmpty())) {
             int result = getMessageUtil().askYesNoCancel("Unsaved changes",
                                                          "This tab has unsaved changes. Do you want to save before closing?");
             if (result == MessageUtil.CANCEL) {
