@@ -10,6 +10,9 @@ import ca.corbett.extras.MessageUtil;
 import javax.swing.JTabbedPane;
 import java.awt.Component;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 
 /**
@@ -30,6 +33,7 @@ public class EditorTabPane extends JTabbedPane {
     private static final Logger log = Logger.getLogger(EditorTabPane.class.getName());
     private MessageUtil messageUtil;
     private final TextManager textManager;
+    private final List<EditorTab> editorTabs = new CopyOnWriteArrayList<>();
     private static int UNTITLED_COUNT = 1; // used to generate default names for new tabs
 
     public EditorTabPane() {
@@ -86,8 +90,16 @@ public class EditorTabPane extends JTabbedPane {
 
         // If we get here, then we're good to add a new tab for this guy:
         EditorTab editorTab = new EditorTab(this, title, text);
+        editorTabs.add(editorTab);
         addTab(title, editorTab.getIcon(), editorTab.getScrollPane());
         setTabComponentAt(getTabCount() - 1, editorTab.getTabHeader());
+    }
+
+    /**
+     * Returns a defensive copy of our EditorTab list.
+     */
+    public List<EditorTab> getEditorTabs() {
+        return new ArrayList<>(editorTabs);
     }
 
     TextManager getTextManager() {
@@ -97,7 +109,7 @@ public class EditorTabPane extends JTabbedPane {
     /**
      * Invoked from EditorTab.close() to remove the given tab from this tab pane.
      *
-     * @param editorTab
+     * @param editorTab the tab to close. must not be null.
      */
     void closeTab(EditorTab editorTab) {
         if (editorTab == null) {
@@ -134,6 +146,7 @@ public class EditorTabPane extends JTabbedPane {
         int index = indexOfComponent(editorTab.getScrollPane());
         if (index != -1) {
             removeTabAt(index);
+            editorTabs.remove(editorTab);
         }
 
         // If that was the last tab, we may have to close the app:

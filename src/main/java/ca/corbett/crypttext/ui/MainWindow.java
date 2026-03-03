@@ -23,7 +23,6 @@ import java.awt.Color;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,7 +40,6 @@ public final class MainWindow extends JFrame implements UIReloadable {
     private final KeyStrokeManager keyStrokeManager;
     private final EditorTabPane editorTabPane;
     private MessageUtil messageUtil;
-    private final List<EditorTab> editorTabs = new ArrayList<>();
 
     private MainWindow() {
         setTitle(Version.FULL_NAME);
@@ -128,7 +126,7 @@ public final class MainWindow extends JFrame implements UIReloadable {
         // when we do a restart to pick up extension changes). But we can still do
         // a basic "save changes?" prompt with yes/no options.
         boolean isAnyTabDirty = false;
-        for (EditorTab editorTab : editorTabs) {
+        for (EditorTab editorTab : editorTabPane.getEditorTabs()) {
             if (editorTab.isDirty()) {
                 isAnyTabDirty = true;
                 break;
@@ -137,7 +135,7 @@ public final class MainWindow extends JFrame implements UIReloadable {
         if (isAnyTabDirty) {
             if (getMessageUtil().askYesNo("Save changes?",
                                           "Save changes before exiting?") == MessageUtil.YES) {
-                for (EditorTab editorTab : editorTabs) {
+                for (EditorTab editorTab : editorTabPane.getEditorTabs()) {
                     if (editorTab.isDirty()) {
                         try {
                             editorTab.save();
