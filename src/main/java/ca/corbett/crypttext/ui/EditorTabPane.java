@@ -86,7 +86,7 @@ public class EditorTabPane extends JTabbedPane {
 
         // If we get here, then we're good to add a new tab for this guy:
         EditorTab editorTab = new EditorTab(this, title, text);
-        addTab(editorTab.getName(), editorTab.getIcon(), editorTab.getScrollPane());
+        addTab(title, editorTab.getIcon(), editorTab.getScrollPane());
         setTabComponentAt(getTabCount() - 1, editorTab.getTabHeader());
     }
 
