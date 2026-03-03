@@ -49,7 +49,6 @@ public final class MainWindow extends JFrame implements UIReloadable {
         setSize(800, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         addWindowListener(new WindowCloseHandler());
-        addTextManagerListeners();
         keyStrokeManager = new KeyStrokeManager(this);
         menuManager = new MenuManager();
         setJMenuBar(menuManager.getMainMenuBar());
@@ -321,14 +320,6 @@ public final class MainWindow extends JFrame implements UIReloadable {
         style.setFontColor(fontColor);
         style.setIsBold(true);
         return style;
-    }
-
-    /**
-     * Invoked internally to configure our TextManager with vetoable listeners
-     * from our extension manager. This gives extensions a chance to veto
-     * all load and save operations, based on whatever criteria they want.
-     */
-    private void addTextManagerListeners() {
     }
 
     /**
