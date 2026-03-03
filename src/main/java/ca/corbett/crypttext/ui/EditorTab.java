@@ -149,7 +149,7 @@ public class EditorTab extends JPanel {
      */
     public void setCurrentText(String newText) {
         textPane.setText(newText);
-        isDirty = true;
+        markDirty();
     }
 
     /**
