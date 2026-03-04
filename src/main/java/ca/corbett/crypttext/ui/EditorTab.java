@@ -11,6 +11,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import java.awt.BorderLayout;
 import java.io.IOException;
 
 /**
@@ -27,7 +28,7 @@ public class EditorTab extends JPanel {
 
     private final EditorTabPane ownerPane;
     private final JTextPane textPane;
-    private final JScrollPane scrollPane;
+    private final JPanel wrapperPanel;
     private final EditorTabHeader tabHeader;
     private String name;
     private Text text;
@@ -46,7 +47,11 @@ public class EditorTab extends JPanel {
         this.name = name;
         textPane = new JTextPane();
         textPane.getDocument().addDocumentListener(new DocListener());
-        scrollPane = ScrollUtil.buildScrollPane(textPane);
+        setLayout(new BorderLayout());
+        wrapperPanel = new JPanel(new BorderLayout());
+        JScrollPane scrollPane = ScrollUtil.buildScrollPane(textPane);
+        wrapperPanel.add(scrollPane, BorderLayout.CENTER);
+        add(wrapperPanel, BorderLayout.CENTER);
         this.text = text;
         isDirty = false;
         tabHeader = new EditorTabHeader(this, name);
@@ -121,13 +126,6 @@ public class EditorTab extends JPanel {
      */
     public JPanel getTabHeader() {
         return tabHeader;
-    }
-
-    /**
-     * Returns the scroll pane that wraps our text pane.
-     */
-    public JScrollPane getScrollPane() {
-        return scrollPane;
     }
 
     /**
