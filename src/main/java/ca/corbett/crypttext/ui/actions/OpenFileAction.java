@@ -3,7 +3,6 @@ package ca.corbett.crypttext.ui.actions;
 import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.text.Text;
 import ca.corbett.crypttext.ui.MainWindow;
-import ca.corbett.crypttext.ui.TextFileFilter;
 import ca.corbett.extras.EnhancedAction;
 import ca.corbett.extras.MessageUtil;
 
@@ -30,11 +29,7 @@ public class OpenFileAction extends EnhancedAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setCurrentDirectory(AppConfig.getInstance().getLastBrowseDirectory());
-        fileChooser.setFileFilter(TextFileFilter.DEFAULT);
-        fileChooser.setMultiSelectionEnabled(false);
-        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        JFileChooser fileChooser = MainWindow.getInstance().getFileChooser();
         int result = fileChooser.showDialog(MainWindow.getInstance(), "Open");
         if (result == JFileChooser.APPROVE_OPTION) {
             File selectedFile = fileChooser.getSelectedFile();

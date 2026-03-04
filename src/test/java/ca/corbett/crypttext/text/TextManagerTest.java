@@ -295,7 +295,7 @@ class TextManagerTest {
     @Test
     void testSaveTextReturnsSameTextWhenVetoed() throws IOException {
         Text text = textManager.newText();
-        textManager.addTextWillSaveListener((manager, t, file) -> false);
+        textManager.addTextWillSaveListener((manager, t, n, file) -> false);
 
         Text result = textManager.saveText(text, "new content");
 
@@ -412,7 +412,7 @@ class TextManagerTest {
         Text text = textManager.newText();
         File newFile = tempDir.resolve("new.txt").toFile();
         assertTrue(newFile.createNewFile());
-        textManager.addTextWillSaveListener((manager, t, file) -> false);
+        textManager.addTextWillSaveListener((manager, t, n, file) -> false);
 
         Text result = textManager.saveTextAs(text, "new content", newFile);
 
@@ -528,7 +528,7 @@ class TextManagerTest {
         Text text = textManager.newText();
 
         boolean[] called = {false};
-        textManager.addTextWillSaveListener((manager, t, file) -> {
+        textManager.addTextWillSaveListener((manager, t, n, file) -> {
             called[0] = true;
             assertEquals(text, t);
             return true;
@@ -541,7 +541,7 @@ class TextManagerTest {
     @Test
     void testTextWillSaveListenerCanVetoSave() throws IOException {
         Text text = textManager.newText();
-        textManager.addTextWillSaveListener((manager, t, file) -> false);
+        textManager.addTextWillSaveListener((manager, t, n, file) -> false);
 
         Text result = textManager.saveText(text, "new content");
 
@@ -556,7 +556,7 @@ class TextManagerTest {
         assertTrue(newFile.createNewFile());
 
         File[] receivedFile = {null};
-        textManager.addTextWillSaveListener((manager, t, file) -> {
+        textManager.addTextWillSaveListener((manager, t, n, file) -> {
             receivedFile[0] = file;
             return true;
         });
@@ -570,7 +570,7 @@ class TextManagerTest {
         Text text = textManager.newText();
 
         boolean[] called = {false};
-        TextWillSaveListener listener = (manager, t, file) -> {
+        TextWillSaveListener listener = (manager, t, newContents, file) -> {
             called[0] = true;
             return true;
         };
@@ -669,7 +669,7 @@ class TextManagerTest {
 
         boolean[] called = {false};
         Text[] savedText = {null};
-        textManager.addTextSavedListener((manager, t) -> {
+        textManager.addTextSavedListener((manager, s, t) -> {
             called[0] = true;
             savedText[0] = t;
         });
@@ -684,8 +684,8 @@ class TextManagerTest {
         Text text = textManager.newText();
 
         boolean[] savedCalled = {false};
-        textManager.addTextWillSaveListener((manager, t, file) -> false);
-        textManager.addTextSavedListener((manager, t) -> savedCalled[0] = true);
+        textManager.addTextWillSaveListener((manager, t, n, file) -> false);
+        textManager.addTextSavedListener((manager, s, t) -> savedCalled[0] = true);
 
         textManager.saveText(text, "content");
         assertFalse(savedCalled[0]);
@@ -698,7 +698,7 @@ class TextManagerTest {
         assertTrue(newFile.createNewFile());
 
         boolean[] called = {false};
-        textManager.addTextSavedListener((manager, t) -> called[0] = true);
+        textManager.addTextSavedListener((manager, s, t) -> called[0] = true);
 
         textManager.saveTextAs(text, "content", newFile);
         assertTrue(called[0]);
@@ -709,7 +709,7 @@ class TextManagerTest {
         Text text = textManager.newText();
 
         boolean[] called = {false};
-        TextSavedListener listener = (manager, t) -> called[0] = true;
+        TextSavedListener listener = (manager, s, t) -> called[0] = true;
 
         textManager.addTextSavedListener(listener);
         textManager.removeTextSavedListener(listener);
@@ -738,10 +738,10 @@ class TextManagerTest {
     @Test
     void testListenerMethodsReturnManagerForChaining() {
         TextWillLoadListener willLoadListener = (manager, file) -> true;
-        TextWillSaveListener willSaveListener = (manager, text, file) -> true;
+        TextWillSaveListener willSaveListener = (manager, text, newContents, file) -> true;
         TextLoadedListener loadedListener = (manager, text) -> {
         };
-        TextSavedListener savedListener = (manager, text) -> {
+        TextSavedListener savedListener = (manager, s, text) -> {
         };
 
         TextManager result = textManager
@@ -833,12 +833,12 @@ class TextManagerTest {
 
         textManager.addTextLoadedListener((manager, t) -> eventLog.append("loaded,"));
 
-        textManager.addTextWillSaveListener((manager, t, destFile) -> {
+        textManager.addTextWillSaveListener((manager, t, n, destFile) -> {
             eventLog.append("willSave,");
             return true;
         });
 
-        textManager.addTextSavedListener((manager, t) -> eventLog.append("saved,"));
+        textManager.addTextSavedListener((manager, s, t) -> eventLog.append("saved,"));
 
         // Load
         Text text = textManager.fromFile(file);

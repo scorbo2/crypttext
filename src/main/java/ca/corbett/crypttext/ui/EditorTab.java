@@ -3,9 +3,11 @@ package ca.corbett.crypttext.ui;
 import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.CryptTextResourceLoader;
 import ca.corbett.crypttext.text.Text;
+import ca.corbett.extras.MessageUtil;
 import ca.corbett.extras.ScrollUtil;
 
 import javax.swing.ImageIcon;
+import javax.swing.JFileChooser;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
@@ -13,6 +15,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
 import java.io.IOException;
+import java.util.logging.Logger;
 
 /**
  * Represents a single tab in the editor area of the main window.
@@ -25,6 +28,9 @@ import java.io.IOException;
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
 public class EditorTab extends JPanel {
+
+    private static final Logger log = Logger.getLogger(EditorTab.class.getName());
+    private MessageUtil messageUtil;
 
     private final EditorTabPane ownerPane;
     private final JTextPane textPane;
@@ -114,6 +120,11 @@ public class EditorTab extends JPanel {
      * If this tab is associated with a scratch file, the user will be prompted to choose a save location.
      */
     public void save() throws IOException {
+        if (isScratchFile()) {
+            saveAs();
+            return;
+        }
+
         Text originalText = text;
         text = ownerPane.getTextManager().saveText(text, getCurrentText());
 
@@ -126,6 +137,43 @@ public class EditorTab extends JPanel {
         isDirty = false;
         tabHeader.updateLabel(name); // removes the visual dirty indicator
         tabHeader.resetIcon(); // swap icon colors for more visual indication of clean state
+    }
+
+    /**
+     * Prompts the user for a new save location for this tab, saves the contents
+     * to that location, then marks this tab as clean.
+     */
+    public void saveAs() throws IOException {
+        JFileChooser fileChooser = MainWindow.getInstance().getFileChooser();
+        int result = fileChooser.showSaveDialog(MainWindow.getInstance());
+        if (result == JFileChooser.APPROVE_OPTION) {
+
+            // If the target file already exists, prompt to confirm the overwrite:
+            // (our TextManager doesn't care and will happily overwrite, but we can add a safety check here)
+            if (fileChooser.getSelectedFile().exists()) {
+                int overwriteResult = getMessageUtil().askYesNo(
+                        "Confirm overwrite",
+                        "The file \""
+                                + fileChooser.getSelectedFile().getName()
+                                + "\" already exists. Do you want to overwrite it?"
+                );
+                if (overwriteResult != MessageUtil.YES) {
+                    return; // user chose not to overwrite, so abort the save action
+                }
+            }
+
+            Text originalText = text;
+            text = ownerPane.getTextManager().saveTextAs(text, getCurrentText(), fileChooser.getSelectedFile());
+
+            // If we got the same instance back, the save was vetoed, so we are still dirty:
+            if (text == originalText) {
+                return;
+            }
+
+            // Otherwise, our contents were successfully saved, so we can mark this tab as clean:
+            isDirty = false;
+            setTabName(fileChooser.getSelectedFile().getName());
+        }
     }
 
     /**
@@ -218,5 +266,12 @@ public class EditorTab extends JPanel {
         public void changedUpdate(DocumentEvent e) {
             markDirty();
         }
+    }
+
+    private MessageUtil getMessageUtil() {
+        if (messageUtil == null) {
+            messageUtil = new MessageUtil(MainWindow.getInstance(), log);
+        }
+        return messageUtil;
     }
 }

@@ -18,6 +18,7 @@ import ca.corbett.extras.logging.LogConsoleTheme;
 import ca.corbett.extras.properties.KeyStrokeProperty;
 
 import javax.swing.JComponent;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -214,6 +215,18 @@ public final class MainWindow extends JFrame implements UIReloadable {
         editorTabPane.newTextTab();
     }
 
+    /**
+     * Returns a configured JFileChooser instance for use in our Open and Save dialogs.
+     * The FileFilter is set to TextFileFilter.DEFAULT (text files).
+     */
+    public JFileChooser getFileChooser() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setCurrentDirectory(AppConfig.getInstance().getLastBrowseDirectory());
+        fileChooser.setFileFilter(TextFileFilter.DEFAULT);
+        fileChooser.setMultiSelectionEnabled(false);
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        return fileChooser;
+    }
 
     /**
      * Sets up our KeyStrokeManager with the appropriate KeyStrokes from app config.

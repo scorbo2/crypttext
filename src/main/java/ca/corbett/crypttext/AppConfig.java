@@ -9,6 +9,8 @@ import ca.corbett.crypttext.ui.actions.LogConsoleAction;
 import ca.corbett.crypttext.ui.actions.NewTabAction;
 import ca.corbett.crypttext.ui.actions.OpenFileAction;
 import ca.corbett.crypttext.ui.actions.PropertiesAction;
+import ca.corbett.crypttext.ui.actions.SaveAction;
+import ca.corbett.crypttext.ui.actions.SaveAsAction;
 import ca.corbett.extensions.AppProperties;
 import ca.corbett.extras.io.KeyStrokeManager;
 import ca.corbett.extras.properties.AbstractProperty;
@@ -58,6 +60,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
 
     private static final String KEY_NEW_TAB = KEYSTROKE_PREFIX + "General.newTab";
     private static final String KEY_OPEN_FILE = KEYSTROKE_PREFIX + "General.openFile";
+    private static final String KEY_SAVE_FILE = KEYSTROKE_PREFIX + "General.saveFile";
+    private static final String KEY_SAVE_FILE_AS = KEYSTROKE_PREFIX + "General.saveFileAs";
     private static final String KEY_PROPERTIES = KEYSTROKE_PREFIX + "General.properties";
     private static final String KEY_EXTENSIONS = KEYSTROKE_PREFIX + "General.extensionManager";
     private static final String KEY_LOG_CONSOLE = KEYSTROKE_PREFIX + "General.logConsole";
@@ -81,6 +85,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     //  and the changes will take effect wherever the action is used)
     private Action newTabAction;
     private Action openFileAction;
+    private Action saveFileAction;
+    private Action saveFileAsAction;
     private Action propertiesAction;
     private Action extensionManagerAction;
     private Action logConsoleAction;
@@ -122,6 +128,14 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         return openFileAction;
     }
 
+    public Action getFileSaveAction() {
+        return saveFileAction;
+    }
+
+    public Action getFileSaveAsAction() {
+        return saveFileAsAction;
+    }
+
     public Action getPropertiesAction() {
         return propertiesAction;
     }
@@ -152,6 +166,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         // Add the ones we control:
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_NEW_TAB));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_OPEN_FILE));
+        keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_SAVE_FILE));
+        keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_SAVE_FILE_AS));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_PROPERTIES));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_EXTENSIONS));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_LOG_CONSOLE));
@@ -229,6 +245,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         // Let's create all our actions:
         newTabAction = new NewTabAction();
         openFileAction = new OpenFileAction();
+        saveFileAction = new SaveAction();
+        saveFileAsAction = new SaveAsAction();
         propertiesAction = new PropertiesAction();
         extensionManagerAction = new ExtensionManagerAction();
         logConsoleAction = new LogConsoleAction();
@@ -275,6 +293,14 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
                                         KeyStrokeManager.parseKeyStroke("Ctrl+O"),
                                         openFileAction)
                           .setAllowBlank(true));
+        props.add(new KeyStrokeProperty(KEY_SAVE_FILE, "Save File:",
+                                        KeyStrokeManager.parseKeyStroke("Ctrl+S"),
+                                        saveFileAction)
+                          .setAllowBlank(false));
+        props.add(new KeyStrokeProperty(KEY_SAVE_FILE_AS, "Save File As:",
+                                        KeyStrokeManager.parseKeyStroke("Ctrl+Shift+S"),
+                                        saveFileAsAction)
+                          .setAllowBlank(false));
         props.add(new KeyStrokeProperty(KEY_PROPERTIES, "Properties Dialog:",
                                         KeyStrokeManager.parseKeyStroke("Ctrl+P"),
                                         propertiesAction)

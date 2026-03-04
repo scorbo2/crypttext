@@ -147,6 +147,18 @@ public class EditorTabPane extends JTabbedPane {
     }
 
     /**
+     * Returns the currently selected tab component, or null if there are no tabs.
+     * The returned Component will <b>usually</b> be an instance of EditorTab,
+     * but this is not guaranteed! Callers must use instanceof to see what they got.
+     */
+    public Component getCurrentTab() {
+        if (getTabCount() == 0) {
+            return null;
+        }
+        return getComponentAt(getSelectedIndex());
+    }
+
+    /**
      * Invoked from EditorTab.close() to remove the given tab from this tab pane.
      *
      * @param editorTab the tab to close. must not be null.
@@ -224,9 +236,9 @@ public class EditorTabPane extends JTabbedPane {
         TextManager textManager = new TextManager();
         final CryptTextExtensionManager extManager = CryptTextExtensionManager.getInstance();
         textManager.addTextWillLoadListener((m, f) -> extManager.fileWillLoad(f));
-        textManager.addTextWillSaveListener((m, t, f) -> extManager.fileWillSave(t.getSourceFile(), t.getText()));
+        textManager.addTextWillSaveListener((m, t, n, f) -> extManager.fileWillSave(t.getSourceFile(), n, f));
         textManager.addTextLoadedListener((m, t) -> extManager.fileLoaded(t.getSourceFile(), t.getText()));
-        textManager.addTextSavedListener((m, t) -> extManager.fileSaved(t.getSourceFile()));
+        textManager.addTextSavedListener((m, s, t) -> extManager.fileSaved(s, t.getSourceFile()));
         return textManager;
     }
 

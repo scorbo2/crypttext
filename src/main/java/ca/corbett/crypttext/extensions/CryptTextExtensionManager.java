@@ -156,11 +156,12 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
      *
      * @param toSave The file that is about to be saved.
      * @param newContents The new (pre-encryption) contents that are about to be written to the file.
+     * @param destFile For save operations, this will be the same as toSave. For save as operations, this is the new file.
      * @return true to allow the save to proceed, or false to veto the save.
      */
-    public boolean fileWillSave(File toSave, String newContents) {
+    public boolean fileWillSave(File toSave, String newContents, File destFile) {
         for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
-            if (!extension.fileWillSave(toSave, newContents)) {
+            if (!extension.fileWillSave(toSave, newContents, destFile)) {
                 return false; // if any extension vetoes, we're done.
             }
         }
@@ -181,12 +182,18 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
 
     /**
      * A simple notification sent to all loaded extensions that a file has been saved.
+     * <p>
+     *     For "save" operations, the two file parameters will be the same.
+     *     For "save as" operations, the first parameter is the file from which the content in question
+     *     was originally loaded, and the second parameter is the destination file.
+     * </p>
      *
-     * @param saved The file that was just saved.
+     * @param source The file from which the content in question was loaded.
+     * @param dest The file to which the content in question was saved.
      */
-    public void fileSaved(File saved) {
+    public void fileSaved(File source, File dest) {
         for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
-            extension.fileSaved(saved);
+            extension.fileSaved(source, dest);
         }
     }
 

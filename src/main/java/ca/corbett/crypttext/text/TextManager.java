@@ -194,7 +194,7 @@ public class TextManager {
         File sourceFile = text.getSourceFile();
 
         // Give listeners a chance to veto the save:
-        if (!fireTextWillSaveEvent(text, sourceFile)) {
+        if (!fireTextWillSaveEvent(text, newValue, sourceFile)) {
             return text;
         }
 
@@ -205,7 +205,7 @@ public class TextManager {
         textList.add(newText);
 
         // Notify listeners:
-        fireTextSavedEvent(newText);
+        fireTextSavedEvent(newText.getSourceFile(), newText);
 
         return newText;
     }
@@ -232,6 +232,10 @@ public class TextManager {
      * do with their stale contents. You can avoid this by listening for textWillSaveEvents
      * and watching for saves to your file.
      * </p>
+     * <p>
+     *     <b>Warning:</b> if newFile already exists, we will overwrite it.
+     *     Callers should check for this and prompt the user for confirmation.
+     * </p>
      */
     public synchronized Text saveTextAs(Text text, String newValue, File newFile) throws IOException {
         if (text == null) {
@@ -240,7 +244,7 @@ public class TextManager {
         if (newFile == null) {
             throw new IllegalArgumentException("new file cannot be null");
         }
-        if (!newFile.exists() || !newFile.canWrite() || newFile.isDirectory()) {
+        if (newFile.isDirectory()) {
             throw new IllegalArgumentException("invalid or unwritable file");
         }
         if (!textList.contains(text)) {
@@ -248,12 +252,14 @@ public class TextManager {
         }
 
         // Wonky case: if we're given the same file that it's already associated with, just delegate to saveText():
-        if (Files.isSameFile(text.getSourceFile().toPath(), newFile.toPath())) {
-            return saveText(text, newValue);
+        if (newFile.exists()) { // Files.isSameFile() will puke if either file doesn't exist; skip this test if so
+            if (Files.isSameFile(text.getSourceFile().toPath(), newFile.toPath())) {
+                return saveText(text, newValue);
+            }
         }
 
         // Give listeners a chance to veto the save:
-        if (!fireTextWillSaveEvent(text, newFile)) {
+        if (!fireTextWillSaveEvent(text, newValue, newFile)) {
             return text;
         }
 
@@ -277,7 +283,7 @@ public class TextManager {
             textList.add(newText);
 
             // Notify listeners:
-            fireTextSavedEvent(newText);
+            fireTextSavedEvent(text.getSourceFile(), newText);
         }
 
         return newText;
@@ -376,9 +382,9 @@ public class TextManager {
         return true;
     }
 
-    private boolean fireTextWillSaveEvent(Text text, File destFile) {
+    private boolean fireTextWillSaveEvent(Text text, String newContents, File destFile) {
         for (TextWillSaveListener listener : textWillSaveListeners) {
-            if (!listener.textWillSave(this, text, destFile)) {
+            if (!listener.textWillSave(this, text, newContents, destFile)) {
                 return false; // The first one that vetoes, we're done
             }
         }
@@ -391,9 +397,9 @@ public class TextManager {
         }
     }
 
-    private void fireTextSavedEvent(Text text) {
+    private void fireTextSavedEvent(File source, Text text) {
         for (TextSavedListener listener : textSavedListeners) {
-            listener.textSaved(this, text);
+            listener.textSaved(this, source, text);
         }
     }
 
