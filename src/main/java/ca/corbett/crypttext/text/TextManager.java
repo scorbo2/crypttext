@@ -250,6 +250,9 @@ public class TextManager {
         if (!textList.contains(text)) {
             throw new IllegalArgumentException("The given Text instance is not cached in this TextManager");
         }
+        if (newValue == null) {
+            newValue = ""; // null means empty string, as per method Javadocs
+        }
 
         // Wonky case: if we're given the same file that it's already associated with, just delegate to saveText():
         if (newFile.exists()) { // Files.isSameFile() will puke if either file doesn't exist; skip this test if so
