@@ -74,9 +74,10 @@ public abstract class CryptTextExtension extends AppExtension {
      *
      * @param toSave The file that is about to be saved.
      * @param newContents The new (pre-encryption) contents that are about to be written to the file.
+     * @param destFile The destination file (for saves, same as toSave, for "save as", the new file).
      * @return true to allow the save to proceed, or false to veto the save.
      */
-    public boolean fileWillSave(File toSave, String newContents) {
+    public boolean fileWillSave(File toSave, String newContents, File destFile) {
         return true;
     }
 
@@ -94,10 +95,16 @@ public abstract class CryptTextExtension extends AppExtension {
     /**
      * Invoked after a file is saved. Extensions can override this method to be notified when a file is saved.
      * If you wish to veto a save, override fileWillSave instead and return false.
+     * <p>
+     *     For "save" operations, the two file parameters will be the same.
+     *     For "save as" operations, the first parameter is the file from which the content in question
+     *     was originally loaded, and the second parameter is the destination file.
+     * </p>
      *
-     * @param saved The file that was just saved.
+     * @param source The file from which the content in question was loaded.
+     * @param dest The file to which the content in question was saved.
      */
-    public void fileSaved(File saved) {
+    public void fileSaved(File source, File dest) {
         // No-op by default. Extensions can override this method to be notified when a file is saved.
     }
 
