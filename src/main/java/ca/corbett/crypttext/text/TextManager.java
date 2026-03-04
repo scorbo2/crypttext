@@ -298,7 +298,7 @@ public class TextManager {
      * (This is, we don't create subdirectories or sub-sub-directories, etc.)
      */
     public boolean isScratchFile(File candidate) throws IOException {
-        if (candidate == null) {
+        if (candidate == null || candidate.getParentFile() == null) {
             return false;
         }
         return Files.isSameFile(scratchDir.toPath(), candidate.getParentFile().toPath());
