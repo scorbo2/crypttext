@@ -162,6 +162,17 @@ public final class MainWindow extends JFrame implements UIReloadable {
             }
         }
 
+        try {
+            // Clean up any scratch files as needed.
+            getTextManager().dispose();
+        }
+        catch (IOException ioe) {
+            // Log and continue shutdown; failure to dispose should not block exit.
+            logger.log(Level.WARNING,
+                       "Error disposing TextManager during cleanup: " + ioe.getMessage(),
+                       ioe);
+        }
+
         logger.info("Cleanup completed.");
     }
 
