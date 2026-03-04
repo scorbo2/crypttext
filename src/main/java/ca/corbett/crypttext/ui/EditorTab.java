@@ -173,6 +173,7 @@ public class EditorTab extends JPanel {
             // Otherwise, our contents were successfully saved, so we can mark this tab as clean:
             isDirty = false;
             setTabName(fileChooser.getSelectedFile().getName());
+            tabHeader.resetIcon();
         }
     }
 
