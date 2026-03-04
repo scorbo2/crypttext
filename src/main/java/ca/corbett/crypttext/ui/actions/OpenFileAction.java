@@ -41,6 +41,7 @@ public class OpenFileAction extends EnhancedAction {
             AppConfig.getInstance().setLastBrowseDirectory(selectedFile.getParentFile());
             try {
                 Text text = MainWindow.getInstance().getTextManager().fromFile(selectedFile);
+                MainWindow.getInstance().getEditorTabPane().clearIfScratch();
                 MainWindow.getInstance().getEditorTabPane().newTextTab(text, selectedFile.getName());
             }
             catch (IOException ioe) {

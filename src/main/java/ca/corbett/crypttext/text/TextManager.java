@@ -9,6 +9,8 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A Controller class for creating and managing Text objects.
@@ -16,6 +18,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
 public class TextManager {
+
+    private static final Logger log = Logger.getLogger(TextManager.class.getName());
 
     private final File scratchDir;
     private final List<Text> textList = new CopyOnWriteArrayList<>();
@@ -27,10 +31,18 @@ public class TextManager {
     private final List<TextChangedListener> textChangedListeners = new CopyOnWriteArrayList<>();
 
     /**
-     * Creates a new TextManager instance using the system temp directory as our scratch dir.
+     * Creates a new TextManager instance using the system temp directory to house our scratch dir.
      */
     public TextManager() {
-        this(new File(System.getProperty("java.io.tmpdir")));
+        File tempDir = new File(System.getProperty("java.io.tmpdir"));
+        try {
+            tempDir = Files.createTempDirectory(tempDir.toPath(), Version.NAME).toFile();
+        }
+        catch (IOException ioe) {
+            log.log(Level.SEVERE, "Unable to create scratch directory; using system temp dir instead.", ioe);
+        }
+
+        scratchDir = tempDir;
     }
 
     /**
@@ -273,13 +285,14 @@ public class TextManager {
 
     /**
      * Reports if the given file exists within our scratch dir.
+     * Our assumption is that scratch files are always direct children of our scratch dir.
+     * (This is, we don't create subdirectories or sub-sub-directories, etc.)
      */
     public boolean isScratchFile(File candidate) throws IOException {
         if (candidate == null) {
             return false;
         }
-        String tempPath = scratchDir.getAbsolutePath();
-        return candidate.getAbsolutePath().startsWith(tempPath);
+        return Files.isSameFile(scratchDir.toPath(), candidate.getParentFile().toPath());
     }
 
     public TextManager addTextWillLoadListener(TextWillLoadListener listener) {

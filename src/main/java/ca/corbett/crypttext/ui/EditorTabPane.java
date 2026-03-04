@@ -113,6 +113,40 @@ public class EditorTabPane extends JTabbedPane {
     }
 
     /**
+     * "Scratch state" means that there is only one tab open, the tab contains a scratch file,
+     * and the tab contains no text. This will also return true if there are no tabs open.
+     */
+    public boolean isScratchState() {
+        if (getTabCount() == 0) {
+            return true;
+        }
+
+        if (getTabCount() == 1) {
+            Component tab = getComponentAt(0);
+            if (tab instanceof EditorTab editorTab) {
+                return editorTab.isScratchFile() && editorTab.getCurrentText().isEmpty();
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * If isScratchState() is true, this will close any open scratch tabs.
+     * This will not trigger the "exit if last tab closed" option even if enabled.
+     */
+    public void clearIfScratch() {
+        if (isScratchState()) {
+            if (getTabCount() > 0) {
+                // We know there is only one tab, and it's a scratch file, so we can just remove it without prompting:
+                // (this isn't terribly thread-safe, though)
+                removeTabAt(0);
+                editorTabs.clear();
+            }
+        }
+    }
+
+    /**
      * Invoked from EditorTab.close() to remove the given tab from this tab pane.
      *
      * @param editorTab the tab to close. must not be null.
