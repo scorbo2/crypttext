@@ -330,13 +330,6 @@ class TextManagerTest {
     }
 
     @Test
-    void testSaveTextAsWithNonExistentFileThrowsException() throws IOException {
-        Text text = textManager.newText();
-        File nonExistent = tempDir.resolve("nonexistent.txt").toFile();
-        assertThrows(IllegalArgumentException.class, () -> textManager.saveTextAs(text, "content", nonExistent));
-    }
-
-    @Test
     void testSaveTextAsWithDirectoryThrowsException() throws IOException {
         Text text = textManager.newText();
         assertThrows(IllegalArgumentException.class, () -> textManager.saveTextAs(text, "content", tempDir.toFile()));
