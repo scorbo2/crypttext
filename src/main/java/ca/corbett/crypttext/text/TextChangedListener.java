@@ -16,7 +16,7 @@ public interface TextChangedListener {
      * The given Text instance is out of date - the contents of the file on disk
      * have just been changed, and the Text instance's value is now stale. The new value of the text
      * is provided as a parameter. This is an informational event and cannot be vetoed.
-     * You can prevent this event from being fired by using a TextWillChangeListener instead.
+     * You can prevent this event from being fired by using a TextWillSaveListener instead.
      *
      * @param manager   The TextManager that is managing the text.
      * @param staleText The stale Text instance that is now out of date.
