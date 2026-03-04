@@ -141,6 +141,17 @@ public class EditorTabPane extends JTabbedPane {
             if (getTabCount() > 0) {
                 // We know there is only one tab, and it's a scratch file, so we can just remove it without prompting:
                 // (this isn't terribly thread-safe, though)
+                Component c = getComponentAt(0);
+                if (c instanceof EditorTab editorTab) {
+                    try {
+                        textManager.remove(editorTab.getTextInstance());
+                    }
+                    catch (IOException ioe) {
+                        // Just log it, not worth a popup dialog:
+                        log.log(Level.WARNING, "Error cleaning up TextManager after clearing scratch tab for file: "
+                                + editorTab.getTextInstance().getSourceFile(), ioe);
+                    }
+                }
                 removeTabAt(0);
                 editorTabs.clear();
             }
