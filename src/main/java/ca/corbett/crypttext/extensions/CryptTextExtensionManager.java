@@ -1,6 +1,7 @@
 package ca.corbett.crypttext.extensions;
 
 import ca.corbett.crypttext.Version;
+import ca.corbett.crypttext.extensions.builtin.TestExtension;
 import ca.corbett.extensions.ExtensionManager;
 import ca.corbett.extras.properties.KeyStrokeProperty;
 import ca.corbett.updates.UpdateManager;
@@ -59,7 +60,13 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
      */
     public void loadAll() {
         // Load our built-in extensions first:
-        // TODO built-ins get loaded here... addExtension(new WhateverExtension(), true);
+
+        // TestExtension is a bit special... we won't show it at all unless you've gone
+        // out of your way to enable it. This is not intended for general users:
+        boolean enableTestExtension = System.getProperty("enableTestExtension", null) != null;
+        if (enableTestExtension) {
+            addExtension(new TestExtension(), true);
+        }
 
         // Now look for external extensions in jar files in our EXTENSIONS_DIR:
         try {
