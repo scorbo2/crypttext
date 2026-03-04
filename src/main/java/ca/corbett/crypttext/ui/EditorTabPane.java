@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -176,17 +177,8 @@ public class EditorTabPane extends JTabbedPane {
                 return; // tab stays open because user canceled.
             }
             if (result == MessageUtil.YES) {
-                // TODO prompt for location if isScratchFile() is true
                 try {
-                    // For now, just save to the same file even if it's a scratch file. TODO clean this up
-                    Text originalText = editorTab.getTextInstance();
-                    Text savedText = textManager.saveText(editorTab.getTextInstance(), editorTab.getCurrentText());
-
-                    // If we get back the same instance, then the save was vetoed, so DON'T close the tab:
-                    if (savedText == originalText) {
-                        // TODO log this? we current rely on the vetoing extension to show a message, but did they?
-                        return; // error dialog was presumably shown to user by whoever vetoed the save
-                    }
+                    editorTab.save();
                 }
                 catch (IOException ioe) {
                     getMessageUtil().error("Error saving file",
@@ -199,6 +191,16 @@ public class EditorTabPane extends JTabbedPane {
         if (index != -1) {
             removeTabAt(index);
             editorTabs.remove(editorTab);
+
+            // Also clean up TextManager (remove from cache, clean scratch file, etc.):
+            try {
+                textManager.remove(editorTab.getTextInstance());
+            }
+            catch (IOException ioe) {
+                // Just log it, not worth a popup dialog:
+                log.log(Level.WARNING, "Error cleaning up TextManager after closing tab for file: "
+                        + editorTab.getTextInstance().getSourceFile(), ioe);
+            }
         }
 
         // If that was the last tab, we may have to close the app:
