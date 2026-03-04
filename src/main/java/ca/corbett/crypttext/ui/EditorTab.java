@@ -36,13 +36,21 @@ public class EditorTab extends JPanel {
 
     /**
      * Creates a new, empty editor tab with the given name.
-     * If the name is null, the default name will be used.
      *
      * @param ownerPane The EditorTabPane that will contain this tab.
-     * @param name      The name for this tab, or null to use the default name.
-     * @param text      The Text instance associated with this tab. This may be null for new, empty tabs.
+     * @param name      The name for this tab.
+     * @param text      The Text instance associated with this tab.
      */
     public EditorTab(EditorTabPane ownerPane, String name, Text text) {
+        if (ownerPane == null) {
+            throw new IllegalArgumentException("ownerPane cannot be null");
+        }
+        if (name == null) {
+            throw new IllegalArgumentException("name cannot be null");
+        }
+        if (text == null) {
+            throw new IllegalArgumentException("Given Text instance cannot be null");
+        }
         this.ownerPane = ownerPane;
         this.name = name;
         textPane = new JTextPane();
