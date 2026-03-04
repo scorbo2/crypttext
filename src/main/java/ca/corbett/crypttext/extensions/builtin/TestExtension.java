@@ -26,7 +26,14 @@ import java.util.logging.Logger;
 /**
  * A special test extension that exercises every extension feature, for testing purposes.
  * This is a special extension! It is not enabled or displayed to the user by default at all.
- * It can only be made visible by setting the "enableTestExtension" VM argument with "-D".
+ * To enable this extension, set the enableTestExtension property to any value.
+ * All of the following examples will work:
+ * <pre>
+ *     -DenableTestExtension=true
+ *     -DenableTestExtension=1
+ *     -DenableTestExtension=anything
+ *     -DenableTestExtension
+ * </pre>
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */

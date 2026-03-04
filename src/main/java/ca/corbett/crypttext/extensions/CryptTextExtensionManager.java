@@ -63,7 +63,7 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
 
         // TestExtension is a bit special... we won't show it at all unless you've gone
         // out of your way to enable it. This is not intended for general users:
-        boolean enableTestExtension = Boolean.parseBoolean(System.getProperty("enableTestExtension", "false"));
+        boolean enableTestExtension = System.getProperty("enableTestExtension", null) != null;
         if (enableTestExtension) {
             addExtension(new TestExtension(), true);
         }
