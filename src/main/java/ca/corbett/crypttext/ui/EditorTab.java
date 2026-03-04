@@ -46,13 +46,16 @@ public class EditorTab extends JPanel {
         this.ownerPane = ownerPane;
         this.name = name;
         textPane = new JTextPane();
-        textPane.getDocument().addDocumentListener(new DocListener());
         setLayout(new BorderLayout());
         wrapperPanel = new JPanel(new BorderLayout());
         JScrollPane scrollPane = ScrollUtil.buildScrollPane(textPane);
         wrapperPanel.add(scrollPane, BorderLayout.CENTER);
         add(wrapperPanel, BorderLayout.CENTER);
         this.text = text;
+        if (this.text != null) {
+            textPane.setText(this.text.getText());
+        }
+        textPane.getDocument().addDocumentListener(new DocListener());
         isDirty = false;
         tabHeader = new EditorTabHeader(this, name);
     }

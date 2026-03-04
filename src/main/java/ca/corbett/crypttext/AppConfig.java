@@ -7,11 +7,13 @@ import ca.corbett.crypttext.ui.actions.ExitAction;
 import ca.corbett.crypttext.ui.actions.ExtensionManagerAction;
 import ca.corbett.crypttext.ui.actions.LogConsoleAction;
 import ca.corbett.crypttext.ui.actions.NewTabAction;
+import ca.corbett.crypttext.ui.actions.OpenFileAction;
 import ca.corbett.crypttext.ui.actions.PropertiesAction;
 import ca.corbett.extensions.AppProperties;
 import ca.corbett.extras.io.KeyStrokeManager;
 import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
+import ca.corbett.extras.properties.DirectoryProperty;
 import ca.corbett.extras.properties.IntegerProperty;
 import ca.corbett.extras.properties.KeyStrokeProperty;
 import ca.corbett.extras.properties.LookAndFeelProperty;
@@ -55,6 +57,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     public static final String KEYSTROKE_PREFIX = "Keystrokes.";
 
     private static final String KEY_NEW_TAB = KEYSTROKE_PREFIX + "General.newTab";
+    private static final String KEY_OPEN_FILE = KEYSTROKE_PREFIX + "General.openFile";
     private static final String KEY_PROPERTIES = KEYSTROKE_PREFIX + "General.properties";
     private static final String KEY_EXTENSIONS = KEYSTROKE_PREFIX + "General.extensionManager";
     private static final String KEY_LOG_CONSOLE = KEYSTROKE_PREFIX + "General.logConsole";
@@ -69,6 +72,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private BooleanProperty enableTabLockIconsProp;
     private IntegerProperty tabIconSizeProp;
     private BooleanProperty closeLastTabExitsProp;
+    private DirectoryProperty lastBrowseDirProp;
 
     // These will be used in the menu bar and with KeyStrokeManager:
     // (they could also be added to buttons or popup menus as needed)
@@ -76,6 +80,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     //  disabled/enabled/renamed or have their shortcut reassigned,
     //  and the changes will take effect wherever the action is used)
     private Action newTabAction;
+    private Action openFileAction;
     private Action propertiesAction;
     private Action extensionManagerAction;
     private Action logConsoleAction;
@@ -113,6 +118,10 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         return newTabAction;
     }
 
+    public Action getOpenFileAction() {
+        return openFileAction;
+    }
+
     public Action getPropertiesAction() {
         return propertiesAction;
     }
@@ -142,6 +151,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
 
         // Add the ones we control:
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_NEW_TAB));
+        keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_OPEN_FILE));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_PROPERTIES));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_EXTENSIONS));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_LOG_CONSOLE));
@@ -177,6 +187,24 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     }
 
     /**
+     * Gets the last directory that was browsed to in a file chooser.
+     * This can be used to initialize the next file chooser, for
+     * a more consistent user experience.
+     */
+    public File getLastBrowseDirectory() {
+        return lastBrowseDirProp.getDirectory();
+    }
+
+    /**
+     * Updates the last-browsed directory, and triggers an immediate
+     * save to persist this change.
+     */
+    public void setLastBrowseDirectory(File dir) {
+        lastBrowseDirProp.setDirectory(dir);
+        save(); // immediate save to persist this change
+    }
+
+    /**
      * This is where you can define the configuration properties for your application.
      * These properties will be displayed in the PropertiesDialog, and persisted
      * to the properties file automatically.
@@ -200,6 +228,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
 
         // Let's create all our actions:
         newTabAction = new NewTabAction();
+        openFileAction = new OpenFileAction();
         propertiesAction = new PropertiesAction();
         extensionManagerAction = new ExtensionManagerAction();
         logConsoleAction = new LogConsoleAction();
@@ -224,6 +253,14 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
                                                     true); // completely arbitrary default value here
         props.add(closeLastTabExitsProp);
 
+        // Hidden props (persisted but never directly shown to the user):
+        lastBrowseDirProp = new DirectoryProperty("hidden.props.lastBrowseDirectory",
+                                                  "Last Browse Directory:",
+                                                  true,
+                                                  Version.SETTINGS_DIR);
+        lastBrowseDirProp.setExposed(false);
+        props.add(lastBrowseDirProp);
+
         return props;
     }
 
@@ -233,6 +270,10 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         props.add(new KeyStrokeProperty(KEY_NEW_TAB, "New Tab:",
                                         KeyStrokeManager.parseKeyStroke("Ctrl+N"),
                                         newTabAction)
+                          .setAllowBlank(true));
+        props.add(new KeyStrokeProperty(KEY_OPEN_FILE, "Open File:",
+                                        KeyStrokeManager.parseKeyStroke("Ctrl+O"),
+                                        openFileAction)
                           .setAllowBlank(true));
         props.add(new KeyStrokeProperty(KEY_PROPERTIES, "Properties Dialog:",
                                         KeyStrokeManager.parseKeyStroke("Ctrl+P"),

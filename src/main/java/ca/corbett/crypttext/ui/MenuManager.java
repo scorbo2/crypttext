@@ -80,6 +80,7 @@ public class MenuManager {
         fileMenu.removeAll();
 
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getNewTabAction()));
+        fileMenu.add(new JMenuItem(AppConfig.getInstance().getOpenFileAction()));
 
         // Add any items to this list from our extensions, if any:
         List<JMenuItem> items = CryptTextExtensionManager.getInstance().getMenuItems("File");

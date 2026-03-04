@@ -81,15 +81,18 @@ public class EditorTabHeader extends JPanel {
     private static class MouseRedispatcher implements MouseListener, MouseMotionListener {
 
         @Override
-        public void mouseClicked(MouseEvent ignored) {
+        public void mouseClicked(MouseEvent e) {
+            redispatch(e);
         }
 
         @Override
-        public void mousePressed(MouseEvent ignored) {
+        public void mousePressed(MouseEvent e) {
+            redispatch(e);
         }
 
         @Override
-        public void mouseReleased(MouseEvent ignored) {
+        public void mouseReleased(MouseEvent e) {
+            redispatch(e);
         }
 
         @Override
@@ -114,12 +117,24 @@ public class EditorTabHeader extends JPanel {
         // Redispatches to the great-grandparent of the source component.
         private void redispatch(MouseEvent e) {
             Component source = (Component)e.getSource();
+            if (source == null) {
+                return; // should never happen, but just in case
+            }
 
             // This is a little non-obvious, but the great-grandparent
             // of the source component is the JTabbedPane that holds our tab headers.
             Component headerPanel = source.getParent();
+            if (headerPanel == null) {
+                return;
+            }
             Component tabContainer = headerPanel.getParent();
+            if (tabContainer == null) {
+                return; // saw this one happen once when closing a tab
+            }
             Component tabbedPane = tabContainer.getParent();
+            if (tabbedPane == null) {
+                return; // let's just play it safe to avoid ugly NPEs
+            }
 
             // Redispatch it!
             MouseEvent parentEvent = SwingUtilities.convertMouseEvent(source, e, tabbedPane);

@@ -93,6 +93,9 @@ public class EditorTabPane extends JTabbedPane {
         editorTabs.add(editorTab);
         addTab(title, editorTab.getIcon(), editorTab);
         setTabComponentAt(getTabCount() - 1, editorTab.getTabHeader());
+
+        // Select this tab immediately:
+        setSelectedIndex(getTabCount() - 1);
     }
 
     /**
@@ -102,7 +105,10 @@ public class EditorTabPane extends JTabbedPane {
         return new ArrayList<>(editorTabs);
     }
 
-    TextManager getTextManager() {
+    /**
+     * Returns the TextManager that this EditorTabPane uses to manage text loading and saving.
+     */
+    public TextManager getTextManager() {
         return textManager;
     }
 

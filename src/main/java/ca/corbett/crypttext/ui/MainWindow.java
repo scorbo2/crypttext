@@ -6,6 +6,7 @@ import ca.corbett.crypttext.Main;
 import ca.corbett.crypttext.Version;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 import ca.corbett.crypttext.extensions.ExtraComponentPosition;
+import ca.corbett.crypttext.text.TextManager;
 import ca.corbett.crypttext.ui.actions.UIReloadAction;
 import ca.corbett.extras.MessageUtil;
 import ca.corbett.extras.SingleInstanceManager;
@@ -78,6 +79,13 @@ public final class MainWindow extends JFrame implements UIReloadable {
             reloadUI();
         }
         super.setVisible(isVisible);
+    }
+
+    /**
+     * Shorthand for getEditorTabPane().getTextManager() - returns the TextManager instance for this main window.
+     */
+    public TextManager getTextManager() {
+        return editorTabPane.getTextManager();
     }
 
     /**
