@@ -1,5 +1,6 @@
 package ca.corbett.crypttext.extensions;
 
+import ca.corbett.crypttext.ui.TabStateManager;
 import ca.corbett.extensions.AppExtension;
 
 import javax.swing.JComponent;
@@ -159,6 +160,16 @@ public abstract class CryptTextExtension extends AppExtension {
      * @return a JComponent to be added to the MainWindow in the specified position, or null for none.
      */
     public JComponent getExtraComponent(ExtraComponentPosition position) {
+        return null;
+    }
+
+    /**
+     * An extension can optionally return an implementation of TabStateManager to handle the
+     * saving and restoring of editor tab state in a custom way. Null is a perfectly acceptable
+     * return here, in which case the built-in default implementation is used.
+     * If more than one extension returns a non-null TabStateManager, the first one in the load order sequence is used.
+     */
+    public TabStateManager getTabStateManager() {
         return null;
     }
 }

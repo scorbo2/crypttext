@@ -43,6 +43,7 @@ public final class MainWindow extends JFrame implements UIReloadable {
     private final MenuManager menuManager;
     private final KeyStrokeManager keyStrokeManager;
     private final EditorTabPane editorTabPane;
+    private TabStateManager tabStateManager;
     private MessageUtil messageUtil;
 
     private MainWindow() {
@@ -53,6 +54,7 @@ public final class MainWindow extends JFrame implements UIReloadable {
         addWindowListener(new WindowCloseHandler());
         keyStrokeManager = new KeyStrokeManager(this);
         menuManager = new MenuManager();
+        tabStateManager = CryptTextExtensionManager.getInstance().getTabStateManager();
         setJMenuBar(menuManager.getMainMenuBar());
         UIReloadAction.getInstance().registerReloadable(this);
         isSingleInstanceModeEnabled = AppConfig.getInstance().isSingleInstanceEnabled();
@@ -190,6 +192,13 @@ public final class MainWindow extends JFrame implements UIReloadable {
             }
         }
 
+        // Now save our tab state:
+        // (we do this after the above save code, because some of those save operations
+        //  may have turned into "save as" operations if the tab had no source file yet.
+        //  By deferring tab state save until here, we guarantee we get the actual
+        //  save locations of those files).
+        saveTabState();
+
         try {
             // Clean up any scratch files as needed.
             getTextManager().dispose();
@@ -224,6 +233,9 @@ public final class MainWindow extends JFrame implements UIReloadable {
 
         // User may have enabled or disabled the option to show lock icons on tabs:
         editorTabPane.updateTabIcons();
+
+        // Make sure we register a TabStateManager, if any extension supplies one:
+        tabStateManager = CryptTextExtensionManager.getInstance().getTabStateManager();
 
         // Our list of extra components around the main tab pane may have changed,
         // if extensions were installed/uninstalled/enabled/disabled, so let's
@@ -378,6 +390,37 @@ public final class MainWindow extends JFrame implements UIReloadable {
         style.setFontColor(fontColor);
         style.setIsBold(true);
         return style;
+    }
+
+    /**
+     * Writes out a list of currently-open tabs so that it can be optionally restored
+     * on the next application run. Note that we don't store this in AppConfig, as it's
+     * not really a preference - it's more of a "session" state.
+     * But the user can enable/disable this behavior in AppConfig.
+     */
+    public void saveTabState() {
+        // If no extension supplied a TabStateManager, use the default implementation:
+        if (tabStateManager == null) {
+            tabStateManager = new DefaultTabStateManager();
+        }
+
+        // Delegate to our utility class:
+        tabStateManager.saveTabState(editorTabPane);
+    }
+
+    /**
+     * Attempts to restore previously-opened tabs from the last application run.
+     * Note that we don't store this in AppConfig, as it's not really a preference - it's more of a "session" state.
+     * But the user can enable/disable this behavior in AppConfig.
+     */
+    public void restoreTabState() {
+        // If no extension supplied a TabStateManager, use the default implementation:
+        if (tabStateManager == null) {
+            tabStateManager = new DefaultTabStateManager();
+        }
+
+        // Delegate to our utility class:
+        tabStateManager.restoreTabState(editorTabPane);
     }
 
     /**

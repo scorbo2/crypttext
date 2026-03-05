@@ -4,7 +4,9 @@ import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.Version;
 import ca.corbett.crypttext.extensions.CryptTextExtension;
 import ca.corbett.crypttext.extensions.ExtraComponentPosition;
+import ca.corbett.crypttext.ui.EditorTabPane;
 import ca.corbett.crypttext.ui.MainWindow;
+import ca.corbett.crypttext.ui.TabStateManager;
 import ca.corbett.extensions.AppExtensionInfo;
 import ca.corbett.extras.EnhancedAction;
 import ca.corbett.extras.io.FileSystemUtil;
@@ -26,7 +28,8 @@ import java.util.logging.Logger;
 /**
  * A special test extension that exercises every extension feature, for testing purposes.
  * This is a special extension! It is not enabled or displayed to the user by default at all.
- * To enable this extension, set the enableTestExtension property to any value.
+ * To enable this extension, set the enableTestExtension property to any value when launching
+ * the application. You can use a "-D" system property for this on the command line.
  * All of the following examples will work:
  * <pre>
  *     -DenableTestExtension=true
@@ -123,11 +126,17 @@ public class TestExtension extends CryptTextExtension {
         return null;
     }
 
+    @Override
     public JComponent getExtraComponent(ExtraComponentPosition position) {
         JPanel dummyPanel = new JPanel();
         dummyPanel.setBackground(Color.PINK);
         dummyPanel.setName("Test " + position.toString());
         return dummyPanel;
+    }
+
+    @Override
+    public TabStateManager getTabStateManager() {
+        return new TestTabStateManager();
     }
 
     /**
@@ -162,6 +171,9 @@ public class TestExtension extends CryptTextExtension {
     }
 
 
+    /**
+     * A very simple action to invoke our logDump() method.
+     */
     private class LogDumpAction extends EnhancedAction {
         public LogDumpAction() {
             super("Log dump");
@@ -171,6 +183,26 @@ public class TestExtension extends CryptTextExtension {
         @Override
         public void actionPerformed(ActionEvent e) {
             logDump();
+        }
+    }
+
+    /**
+     * A very simple TabStateManager implementation that just logs stuff, for testing purposes.
+     */
+    private static class TestTabStateManager implements TabStateManager {
+
+        private static final Logger log = Logger.getLogger(TestTabStateManager.class.getName());
+
+        @Override
+        public void saveTabState(EditorTabPane editorTabPane) {
+            log.info("saveTabState: " + editorTabPane.getTabCount() + " tabs would be saved.");
+        }
+
+        @Override
+        public void restoreTabState(EditorTabPane editorTabPane) {
+            log.info("restoreTabState: would restore tab state into editorTabPane with "
+                             + editorTabPane.getTabCount()
+                             + " existing tabs");
         }
     }
 }

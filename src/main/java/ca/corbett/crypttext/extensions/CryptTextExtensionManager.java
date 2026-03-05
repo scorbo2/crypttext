@@ -2,6 +2,7 @@ package ca.corbett.crypttext.extensions;
 
 import ca.corbett.crypttext.Version;
 import ca.corbett.crypttext.extensions.builtin.TestExtension;
+import ca.corbett.crypttext.ui.TabStateManager;
 import ca.corbett.extensions.ExtensionManager;
 import ca.corbett.extras.properties.KeyStrokeProperty;
 import ca.corbett.updates.UpdateManager;
@@ -265,5 +266,22 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
             }
         }
         return list;
+    }
+
+    /**
+     * Queries all loaded extensions to see if any of them want to supply a TabStateManager to handle
+     * the saving and restoring of editor tab state. The first extension that returns a non-null value from this method
+     * will be used as the application's TabStateManager, and subsequent extensions in the load order sequence
+     * will not be sent this message. If no extension returns a non-null value, then the application will use
+     * its built-in DefaultTabStateManager.
+     */
+    public TabStateManager getTabStateManager() {
+        for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
+            TabStateManager manager = extension.getTabStateManager();
+            if (manager != null) {
+                return manager; // if any extension returns a non-null value, we're done.
+            }
+        }
+        return null; // No extension supplied a TabStateManager, so allow the application to use the default.
     }
 }
