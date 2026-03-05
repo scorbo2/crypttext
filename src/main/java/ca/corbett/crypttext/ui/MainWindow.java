@@ -130,14 +130,22 @@ public final class MainWindow extends JFrame implements UIReloadable {
             // If so, let's load each one into a new tab:
             try {
                 Text text = editorTabPane.getTextManager().fromFile(argFile);
+
+                // It's possible the load was vetoed by one of our extensions,
+                // in which case we'll get null. We don't need to show a warning
+                // here, because presumably the extension that vetoed has already done so.
+                if (text == null) {
+                    continue; // just skip it.
+                }
+
                 editorTabPane.clearIfScratch(); // Don't leave the default "Untitled" tab open if we load something.
                 editorTabPane.newTextTab(text, argFile.getName());
             }
-            catch (IOException ioe) {
+            catch (IOException | IllegalArgumentException e) {
                 getMessageUtil().error("File error",
                                        "An error occurred while trying to open the file:\n" + arg + "\n\n" +
-                                               "Error message: " + ioe.getMessage(),
-                                       ioe);
+                                               "Error message: " + e.getMessage(),
+                                       e);
             }
         }
     }
