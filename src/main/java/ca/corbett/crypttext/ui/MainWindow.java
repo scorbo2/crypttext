@@ -6,6 +6,7 @@ import ca.corbett.crypttext.Main;
 import ca.corbett.crypttext.Version;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 import ca.corbett.crypttext.extensions.ExtraComponentPosition;
+import ca.corbett.crypttext.text.Text;
 import ca.corbett.crypttext.text.TextManager;
 import ca.corbett.crypttext.ui.actions.UIReloadAction;
 import ca.corbett.extras.MessageUtil;
@@ -24,6 +25,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.logging.Level;
@@ -117,8 +119,26 @@ public final class MainWindow extends JFrame implements UIReloadable {
                 arg = arg.substring(1, arg.length() - 1);
             }
 
-            // Now handle the argument:
-            logger.info("Received start argument: " + arg);
+            // For each argument, make sure it's a valid file path:
+            File argFile = new File(arg);
+            if (!argFile.exists() || !argFile.isFile() || !argFile.canRead()) {
+                getMessageUtil().warning("Invalid file argument",
+                                         "The given argument is not a valid, readable file:\n" + arg);
+                continue;
+            }
+
+            // If so, let's load each one into a new tab:
+            try {
+                Text text = editorTabPane.getTextManager().fromFile(argFile);
+                editorTabPane.clearIfScratch(); // Don't leave the default "Untitled" tab open if we load something.
+                editorTabPane.newTextTab(text, argFile.getName());
+            }
+            catch (IOException ioe) {
+                getMessageUtil().error("File error",
+                                       "An error occurred while trying to open the file:\n" + arg + "\n\n" +
+                                               "Error message: " + ioe.getMessage(),
+                                       ioe);
+            }
         }
     }
 
