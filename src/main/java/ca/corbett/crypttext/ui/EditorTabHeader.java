@@ -62,6 +62,7 @@ public class EditorTabHeader extends JPanel {
     public void updateLabel(String newName) {
         String name = ownerTab.isDirty() ? newName + " *" : newName;
         label.setText(name);
+        label.setIcon(ownerTab.getIcon()); // this may have changed
     }
 
     public void resetIcon() {

@@ -3,6 +3,10 @@ package ca.corbett.crypttext.ui;
 import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.CryptTextResourceLoader;
 import ca.corbett.crypttext.VetoException;
+import ca.corbett.crypttext.crypt.CryptMetadata;
+import ca.corbett.crypttext.crypt.CryptUtil;
+import ca.corbett.crypttext.crypt.DefaultCryptMetadata;
+import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 import ca.corbett.crypttext.text.Text;
 import ca.corbett.extras.MessageUtil;
 import ca.corbett.extras.ScrollUtil;
@@ -43,6 +47,7 @@ public class EditorTab extends JPanel {
     private final EditorTabHeader tabHeader;
     private String name;
     private Text text;
+    private CryptMetadata cryptMetadata;
     private boolean isDirty;
 
     /**
@@ -72,6 +77,7 @@ public class EditorTab extends JPanel {
         add(wrapperPanel, BorderLayout.CENTER);
         this.text = text;
         textPane.setText(this.text.getText());
+        this.cryptMetadata = generateCryptMetadata();
         textPane.getDocument().addDocumentListener(new DocListener());
         isDirty = false;
         tabHeader = new EditorTabHeader(this, name);
@@ -108,6 +114,24 @@ public class EditorTab extends JPanel {
     public void setTabName(String newName) {
         this.name = newName;
         tabHeader.updateLabel(newName);
+    }
+
+    /**
+     * Returns the CryptMetadata instance associated with the text in this tab.
+     */
+    public CryptMetadata getCryptMetadata() {
+        return cryptMetadata;
+    }
+
+    /**
+     * Updates the CryptMetadata associated with the text in this tab.
+     * Setting null is valid here, and will result in a DefaultCryptMetadata being used.
+     */
+    public void setCryptMetadata(CryptMetadata newMetadata) {
+        if (newMetadata == null) {
+            newMetadata = new DefaultCryptMetadata(CryptUtil.isCryptTextWrapped(getCurrentText()));
+        }
+        this.cryptMetadata = newMetadata;
     }
 
     /**
@@ -230,6 +254,21 @@ public class EditorTab extends JPanel {
     }
 
     /**
+     * Invoked internally to generate a CryptMetadata instance for the given Text instance.
+     * This may be supplied by extensions, or a default one will be used.
+     */
+    private CryptMetadata generateCryptMetadata() {
+        // Check if any extension wants to provide custom CryptMetadata for this Text instance:
+        CryptMetadata cryptMetadata = CryptTextExtensionManager.getInstance().generateCryptMetadata(getCurrentText());
+        if (cryptMetadata != null) {
+            return cryptMetadata;
+        }
+
+        // If not, use the default implementation:
+        return new DefaultCryptMetadata(CryptUtil.isCryptTextWrapped(getCurrentText()));
+    }
+
+    /**
      * Will return an Icon appropriate for this editor tab, based on current
      * application settings. There is no caching - a new icon with appropriate
      * sizing will be returned every time this method is invoked.
@@ -243,11 +282,12 @@ public class EditorTab extends JPanel {
             return null; // easy path
         }
 
-        // For now, we always return the "unlocked" icon for the tab header.
-        // This will change when encryption is implemented, so we can show
-        // the "locked" icon for encrypted files.
+        boolean isEncrypted = CryptUtil.isCryptTextWrapped(getCurrentText());
         int iconSize = AppConfig.getInstance().getTabIconSize();
-        return CryptTextResourceLoader.getUnlockIcon(iconSize);
+        return isEncrypted
+                ? CryptTextResourceLoader.getLockIcon(iconSize)
+                : CryptTextResourceLoader.getUnlockIcon(iconSize);
+
     }
 
     /**

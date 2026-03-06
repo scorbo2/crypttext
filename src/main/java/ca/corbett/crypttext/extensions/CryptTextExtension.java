@@ -1,5 +1,6 @@
 package ca.corbett.crypttext.extensions;
 
+import ca.corbett.crypttext.crypt.CryptMetadata;
 import ca.corbett.crypttext.ui.TabStateManager;
 import ca.corbett.extensions.AppExtension;
 
@@ -110,19 +111,36 @@ public abstract class CryptTextExtension extends AppExtension {
     }
 
     /**
+     * Extensions can subclass the CryptMetadata class to provide custom metadata
+     * related to encryption of a Text instance. If an extension wishes to override
+     * the application's built-in encryption/decryption scheme, it should also override
+     * textWillEncrypt and textWillDecrypt to provide the actual encryption/decryption functionality.
+     * Extensions can scan the supplied rawText to determine whether it contains any encrypted content
+     * that the extension can handle, and if so, return a CryptMetadata instance with the relevant
+     * metadata for that content.
+     *
+     * @param rawText The raw text (encrypted or not) for which the application is requesting CryptMetadata.
+     * @return a CryptMetadata instance with relevant metadata, or null if the extension has none for this rawText.
+     */
+    public CryptMetadata generateCryptMetadata(String rawText) {
+        return null;
+    }
+
+    /**
      * Invoked before text is encrypted. Extensions can return a non-null value to prevent the application
      * from using its built-in encryption scheme to encrypt the data. The return in that case is a String
      * representation of the encrypted data (typically base64-encoded, but this is not enforced).
-     * Returning null here will allow the application to handle encryption.
+     * Returning null here will allow the application to handle encryption with the built-in scheme.
      * <p>
      *     The first extension that returns a non-null value from this method will prevent
      *     subsequent extensions in the load order sequence from being sent this message.
      * </p>
      *
-     * @param textToEncrypt The plaintext that is about to be encrypted.
+     * @param textToEncrypt The text that is about to be encrypted.
+     * @param cryptMetadata The CryptMetadata instance associated with the text that is about to be encrypted.
      * @return an encrypted version of the text, or null to allow the application to handle encryption.
      */
-    public String textWillEncrypt(String textToEncrypt) {
+    public String textWillEncrypt(String textToEncrypt, CryptMetadata cryptMetadata) {
         return null;
     }
 
@@ -130,16 +148,17 @@ public abstract class CryptTextExtension extends AppExtension {
      * Invoked before text is decrypted. Extensions can return a non-null value to prevent the application
      * from using its built-in decryption scheme to decrypt the data. The return in that
      * case is a String representation of the decrypted data.
-     * Returning null here will allow the application to handle decryption.
+     * Returning null here will allow the application to handle decryption using the built-in scheme.
      * <p>
      *     The first extension that returns a non-null value from this method will prevent
      *     subsequent extensions in the load order sequence from being sent this message.
      * </p>
      *
-     * @param textToDecrypt The encrypted text that is about to be decrypted (typically base64 encoded).
+     * @param textToDecrypt The encrypted text that is about to be decrypted.
+     * @param cryptMetadata The CryptMetadata instance associated with the text that is about to be decrypted.
      * @return a decrypted version of the text, or null to allow the application to handle decryption.
      */
-    public String textWillDecrypt(String textToDecrypt) {
+    public String textWillDecrypt(String textToDecrypt, CryptMetadata cryptMetadata) {
         return null;
     }
 

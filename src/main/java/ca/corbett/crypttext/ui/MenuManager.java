@@ -83,6 +83,7 @@ public class MenuManager {
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getOpenFileAction()));
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getFileSaveAction()));
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getFileSaveAsAction()));
+        fileMenu.add(new JMenuItem(AppConfig.getInstance().getCryptAction()));
 
         // Add any items to this list from our extensions, if any:
         List<JMenuItem> items = CryptTextExtensionManager.getInstance().getMenuItems("File");
