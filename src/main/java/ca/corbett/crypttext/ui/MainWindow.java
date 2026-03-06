@@ -4,6 +4,7 @@ import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.CryptTextResourceLoader;
 import ca.corbett.crypttext.Main;
 import ca.corbett.crypttext.Version;
+import ca.corbett.crypttext.VetoException;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 import ca.corbett.crypttext.extensions.ExtraComponentPosition;
 import ca.corbett.crypttext.text.Text;
@@ -132,16 +133,12 @@ public final class MainWindow extends JFrame implements UIReloadable {
             // If so, let's load each one into a new tab:
             try {
                 Text text = editorTabPane.getTextManager().fromFile(argFile);
-
-                // It's possible the load was vetoed by one of our extensions,
-                // in which case we'll get null. We don't need to show a warning
-                // here, because presumably the extension that vetoed has already done so.
-                if (text == null) {
-                    continue; // just skip it.
-                }
-
                 editorTabPane.clearIfScratch(); // Don't leave the default "Untitled" tab open if we load something.
                 editorTabPane.newTextTab(text, argFile.getName());
+            }
+            catch (VetoException ignored) {
+                // An extension vetoed the load!
+                // Just skip it - TextManager has already logged the veto.
             }
             catch (IOException | IllegalArgumentException e) {
                 getMessageUtil().error("File error",
@@ -377,10 +374,12 @@ public final class MainWindow extends JFrame implements UIReloadable {
         // Our custom theme will be based on the "matrix" theme (green on black):
         LogConsoleTheme theme = LogConsoleTheme.createMatrixStyledTheme();
 
-        theme.setStyle("encrypt", createLogConsoleStyle("encrypt:", Color.RED));
-        theme.setStyle("decrypt", createLogConsoleStyle("decrypt:", Color.CYAN));
-        theme.setStyle("load", createLogConsoleStyle("load:", Color.MAGENTA));
-        theme.setStyle("save", createLogConsoleStyle("save:", Color.MAGENTA));
+        // We'll customize colors for our known operation types so they stand out in the log:
+        theme.setStyle("Encrypt", createLogConsoleStyle("Encrypt:", Color.RED));
+        theme.setStyle("Decrypt", createLogConsoleStyle("Decrypt:", Color.CYAN));
+        theme.setStyle("Load", createLogConsoleStyle("Load:", Color.MAGENTA));
+        theme.setStyle("Save", createLogConsoleStyle("Save:", Color.MAGENTA));
+        theme.setStyle("Veto", createLogConsoleStyle("veto:", Color.ORANGE));
 
         // Now let's register our theme and switch to it immediately:
         LogConsole.getInstance().registerTheme("CryptTextTheme", theme, true);

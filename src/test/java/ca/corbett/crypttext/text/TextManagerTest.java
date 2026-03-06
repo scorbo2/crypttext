@@ -1,5 +1,6 @@
 package ca.corbett.crypttext.text;
 
+import ca.corbett.crypttext.VetoException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Comprehensive unit tests for the TextManager class.
@@ -159,7 +161,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testFromCacheReturnsCachedText() throws IOException {
+    void testFromCacheReturnsCachedText() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "test content");
 
@@ -170,7 +172,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testFromCacheWithSameFileReturnsText() throws IOException {
+    void testFromCacheWithSameFileReturnsText() throws Exception {
         Text text = textManager.newText();
         Text cached = textManager.fromCache(text.getSourceFile());
         assertSame(text, cached);
@@ -195,7 +197,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testFromFileLoadsContent() throws IOException {
+    void testFromFileLoadsContent() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         String content = "Hello, World!";
         Files.writeString(file.toPath(), content);
@@ -208,7 +210,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testFromFileIncreasesSize() throws IOException {
+    void testFromFileIncreasesSize() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "content");
 
@@ -218,7 +220,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testFromFileReturnsCachedIfAlreadyLoaded() throws IOException {
+    void testFromFileReturnsCachedIfAlreadyLoaded() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "content");
 
@@ -230,15 +232,21 @@ class TextManagerTest {
     }
 
     @Test
-    void testFromFileReturnsNullWhenVetoed() throws IOException {
+    void testFromFileThrowsVetoExceptionWhenVetoed() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "content");
 
         textManager.addTextWillLoadListener((manager, f) -> false);
 
-        Text text = textManager.fromFile(file);
-        assertNull(text);
-        assertEquals(0, textManager.size());
+        try {
+            Text text = textManager.fromFile(file);
+            assertNull(text);
+            assertEquals(0, textManager.size());
+            fail("Expected VetoException to be thrown");
+        }
+        catch (VetoException ignored) {
+            // expected exception
+        }
     }
 
     // ==================== SaveText Tests ====================
@@ -259,7 +267,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testSaveTextUpdatesContent() throws IOException {
+    void testSaveTextUpdatesContent() throws Exception {
         Text text = textManager.newText();
         String newContent = "Updated content";
 
@@ -271,7 +279,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testSaveTextWithNullValueSavesEmptyString() throws IOException {
+    void testSaveTextWithNullValueSavesEmptyString() throws Exception {
         Text text = textManager.newText();
 
         Text savedText = textManager.saveText(text, null);
@@ -280,7 +288,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testSaveTextReplacesOldTextInCache() throws IOException {
+    void testSaveTextReplacesOldTextInCache() throws Exception {
         Text text = textManager.newText();
         File sourceFile = text.getSourceFile();
 
@@ -293,18 +301,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testSaveTextReturnsSameTextWhenVetoed() throws IOException {
-        Text text = textManager.newText();
-        textManager.addTextWillSaveListener((manager, t, n, file) -> false);
-
-        Text result = textManager.saveText(text, "new content");
-
-        assertSame(text, result);
-        assertEquals("", result.getText()); // Content should not have changed
-    }
-
-    @Test
-    void testSaveTextPersistsToFile() throws IOException {
+    void testSaveTextPersistsToFile() throws Exception {
         Text text = textManager.newText();
         String content = "Persisted content";
 
@@ -348,7 +345,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testSaveTextAsChangesSourceFile() throws IOException {
+    void testSaveTextAsChangesSourceFile() throws Exception {
         Text text = textManager.newText();
         File originalFile = text.getSourceFile();
         File newFile = tempDir.resolve("new.txt").toFile();
@@ -363,7 +360,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testSaveTextAsPersistsToNewFile() throws IOException {
+    void testSaveTextAsPersistsToNewFile() throws Exception {
         Text text = textManager.newText();
         File newFile = tempDir.resolve("new.txt").toFile();
         assertTrue(newFile.createNewFile());
@@ -376,7 +373,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testSaveTextAsRemovesOldTextFromCache() throws IOException {
+    void testSaveTextAsRemovesOldTextFromCache() throws Exception {
         Text text = textManager.newText();
         File newFile = tempDir.resolve("new.txt").toFile();
         assertTrue(newFile.createNewFile());
@@ -388,7 +385,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testSaveTextAsToSameFileDelegatesToSaveText() throws IOException {
+    void testSaveTextAsToSameFileDelegatesToSaveText() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "original");
         Text text = textManager.fromFile(file);
@@ -398,18 +395,6 @@ class TextManagerTest {
         assertEquals("updated", savedText.getText());
         assertEquals(file, savedText.getSourceFile());
         assertEquals(1, textManager.size());
-    }
-
-    @Test
-    void testSaveTextAsReturnsSameTextWhenVetoed() throws IOException {
-        Text text = textManager.newText();
-        File newFile = tempDir.resolve("new.txt").toFile();
-        assertTrue(newFile.createNewFile());
-        textManager.addTextWillSaveListener((manager, t, n, file) -> false);
-
-        Text result = textManager.saveTextAs(text, "new content", newFile);
-
-        assertSame(text, result);
     }
 
     // ==================== Listener Tests - TextWillLoadListener ====================
@@ -425,7 +410,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testTextWillLoadListenerReceivesEvent() throws IOException {
+    void testTextWillLoadListenerReceivesEvent() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "content");
 
@@ -441,18 +426,23 @@ class TextManagerTest {
     }
 
     @Test
-    void testTextWillLoadListenerCanVetoLoad() throws IOException {
+    void testTextWillLoadListenerCanVetoLoad() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "content");
 
         textManager.addTextWillLoadListener((manager, f) -> false);
 
-        Text text = textManager.fromFile(file);
-        assertNull(text);
+        try {
+            Text text = textManager.fromFile(file);
+            fail("Expected VetoException to be thrown");
+        }
+        catch (VetoException ignored) {
+            // expected exception
+        }
     }
 
     @Test
-    void testMultipleTextWillLoadListenersAllCalled() throws IOException {
+    void testMultipleTextWillLoadListenersAllCalled() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "content");
 
@@ -471,7 +461,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testTextWillLoadListenerStopsOnFirstVeto() throws IOException {
+    void testTextWillLoadListenerStopsOnFirstVeto() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "content");
 
@@ -482,12 +472,19 @@ class TextManagerTest {
             return true;
         });
 
-        textManager.fromFile(file);
+        try {
+            textManager.fromFile(file);
+            fail("Expected VetoException to be thrown");
+        }
+        catch (VetoException ignored) {
+            // expected exception
+        }
+
         assertFalse(secondCalled[0]);
     }
 
     @Test
-    void testRemoveTextWillLoadListenerWorks() throws IOException {
+    void testRemoveTextWillLoadListenerWorks() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "content");
 
@@ -517,7 +514,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testTextWillSaveListenerReceivesEvent() throws IOException {
+    void testTextWillSaveListenerReceivesEvent() throws Exception {
         Text text = textManager.newText();
 
         boolean[] called = {false};
@@ -532,18 +529,21 @@ class TextManagerTest {
     }
 
     @Test
-    void testTextWillSaveListenerCanVetoSave() throws IOException {
+    void testTextWillSaveListenerCanVetoSave() throws Exception {
         Text text = textManager.newText();
         textManager.addTextWillSaveListener((manager, t, n, file) -> false);
 
-        Text result = textManager.saveText(text, "new content");
-
-        assertSame(text, result);
-        assertEquals("", result.getText());
+        try {
+            textManager.saveText(text, "new content");
+            fail("Expected VetoException to be thrown");
+        }
+        catch (VetoException ignored) {
+            // expected exception
+        }
     }
 
     @Test
-    void testTextWillSaveListenerReceivesCorrectDestFile() throws IOException {
+    void testTextWillSaveListenerReceivesCorrectDestFile() throws Exception {
         Text text = textManager.newText();
         File newFile = tempDir.resolve("new.txt").toFile();
         assertTrue(newFile.createNewFile());
@@ -559,7 +559,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testRemoveTextWillSaveListenerWorks() throws IOException {
+    void testRemoveTextWillSaveListenerWorks() throws Exception {
         Text text = textManager.newText();
 
         boolean[] called = {false};
@@ -588,7 +588,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testTextLoadedListenerReceivesEvent() throws IOException {
+    void testTextLoadedListenerReceivesEvent() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "content");
 
@@ -603,7 +603,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testTextLoadedListenerNotCalledWhenLoadVetoed() throws IOException {
+    void testTextLoadedListenerNotCalledWhenLoadVetoed() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "content");
 
@@ -611,12 +611,19 @@ class TextManagerTest {
         textManager.addTextWillLoadListener((manager, f) -> false);
         textManager.addTextLoadedListener((manager, t) -> loadedCalled[0] = true);
 
-        textManager.fromFile(file);
+        try {
+            textManager.fromFile(file);
+            fail("Expected VetoException to be thrown");
+        }
+        catch (VetoException ignored) {
+            // expected exception
+        }
+
         assertFalse(loadedCalled[0]);
     }
 
     @Test
-    void testTextLoadedListenerNotCalledForCachedFile() throws IOException {
+    void testTextLoadedListenerNotCalledForCachedFile() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "content");
 
@@ -630,7 +637,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testRemoveTextLoadedListenerWorks() throws IOException {
+    void testRemoveTextLoadedListenerWorks() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "content");
 
@@ -657,7 +664,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testTextSavedListenerReceivesEvent() throws IOException {
+    void testTextSavedListenerReceivesEvent() throws Exception {
         Text text = textManager.newText();
 
         boolean[] called = {false};
@@ -673,19 +680,26 @@ class TextManagerTest {
     }
 
     @Test
-    void testTextSavedListenerNotCalledWhenSaveVetoed() throws IOException {
+    void testTextSavedListenerNotCalledWhenSaveVetoed() throws Exception {
         Text text = textManager.newText();
 
         boolean[] savedCalled = {false};
         textManager.addTextWillSaveListener((manager, t, n, file) -> false);
         textManager.addTextSavedListener((manager, s, t) -> savedCalled[0] = true);
 
-        textManager.saveText(text, "content");
+        try {
+            textManager.saveText(text, "content");
+            fail("Expected VetoException to be thrown");
+        }
+        catch (VetoException ignored) {
+            // expected exception
+        }
+        
         assertFalse(savedCalled[0]);
     }
 
     @Test
-    void testTextSavedListenerReceivesEventForSaveAs() throws IOException {
+    void testTextSavedListenerReceivesEventForSaveAs() throws Exception {
         Text text = textManager.newText();
         File newFile = tempDir.resolve("new.txt").toFile();
         assertTrue(newFile.createNewFile());
@@ -698,7 +712,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testRemoveTextSavedListenerWorks() throws IOException {
+    void testRemoveTextSavedListenerWorks() throws Exception {
         Text text = textManager.newText();
 
         boolean[] called = {false};
@@ -749,7 +763,7 @@ class TextManagerTest {
     // ==================== Integration Tests ====================
 
     @Test
-    void testCompleteWorkflowNewSaveAndReload() throws IOException {
+    void testCompleteWorkflowNewSaveAndReload() throws Exception {
         // Create new text
         Text text1 = textManager.newText();
         assertEquals("", text1.getText());
@@ -775,7 +789,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testCompleteWorkflowWithSaveAs() throws IOException {
+    void testCompleteWorkflowWithSaveAs() throws Exception {
         // Create and save with initial content
         Text text1 = textManager.newText();
         text1 = textManager.saveText(text1, "Initial content");
@@ -796,7 +810,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testMultipleTextsCanCoexist() throws IOException {
+    void testMultipleTextsCanCoexist() throws Exception {
         File file1 = tempDir.resolve("file1.txt").toFile();
         File file2 = tempDir.resolve("file2.txt").toFile();
         Files.writeString(file1.toPath(), "Content 1");
@@ -813,7 +827,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testAllListenersCombinedWorkflow() throws IOException {
+    void testAllListenersCombinedWorkflow() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "initial");
 
@@ -843,7 +857,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testSaveTextUpdatesFileContent() throws IOException {
+    void testSaveTextUpdatesFileContent() throws Exception {
         Text text = textManager.newText();
         File file = text.getSourceFile();
 
@@ -857,7 +871,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testEmptyStringHandling() throws IOException {
+    void testEmptyStringHandling() throws Exception {
         Text text = textManager.newText();
 
         // Save empty string
@@ -867,7 +881,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testWhitespaceContentHandling() throws IOException {
+    void testWhitespaceContentHandling() throws Exception {
         Text text = textManager.newText();
         String whitespace = "   \n\t\r\n   ";
 
@@ -877,7 +891,7 @@ class TextManagerTest {
     }
 
     @Test
-    void testLargeContentHandling() throws IOException {
+    void testLargeContentHandling() throws Exception {
         Text text = textManager.newText();
 
         // Create a large string (1MB)

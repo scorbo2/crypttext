@@ -2,6 +2,7 @@ package ca.corbett.crypttext.ui;
 
 import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.CryptTextResourceLoader;
+import ca.corbett.crypttext.VetoException;
 import ca.corbett.crypttext.text.Text;
 import ca.corbett.extras.MessageUtil;
 import ca.corbett.extras.ScrollUtil;
@@ -19,11 +20,16 @@ import java.util.logging.Logger;
 
 /**
  * Represents a single tab in the editor area of the main window.
- * And EditorTab consists of a JTextPane wrapped in a JScrollPane,
- * and contains metadata bout the file currently loaded in that tab, if any.
- * <p>
- * TODO what is this class? Just a data class? or a UI class? Or both...
- * TODO maybe this class itself should be a JComponent...
+ * This tab tracks "dirty" status, and gives visual indications of whether
+ * there are unsaved changes. Metadata about the file currently
+ * loaded in this tab is also stored here, and can be accessed by extensions
+ * via the getTextInstance() method. The current text contents of the tab can be accessed
+ * via getCurrentText() - note that this may differ from the text in the Text instance,
+ * if there are unsaved changes. Use getTextInstance().getText() to retrieve the
+ * text as it was when this EditorTab was created or last saved.
+ * Use getCurrentText() to retrieve the current text in the editor, which may include unsaved changes.
+ * You can use setCurrentText() to replace the text in this editor tab with new text - this
+ * will automatically mark the tab as dirty.
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
@@ -34,7 +40,6 @@ public class EditorTab extends JPanel {
 
     private final EditorTabPane ownerPane;
     private final JTextPane textPane;
-    private final JPanel wrapperPanel;
     private final EditorTabHeader tabHeader;
     private String name;
     private Text text;
@@ -61,14 +66,12 @@ public class EditorTab extends JPanel {
         this.name = name;
         textPane = new JTextPane();
         setLayout(new BorderLayout());
-        wrapperPanel = new JPanel(new BorderLayout());
+        JPanel wrapperPanel = new JPanel(new BorderLayout());
         JScrollPane scrollPane = ScrollUtil.buildScrollPane(textPane);
         wrapperPanel.add(scrollPane, BorderLayout.CENTER);
         add(wrapperPanel, BorderLayout.CENTER);
         this.text = text;
-        if (this.text != null) {
-            textPane.setText(this.text.getText());
-        }
+        textPane.setText(this.text.getText());
         textPane.getDocument().addDocumentListener(new DocListener());
         isDirty = false;
         tabHeader = new EditorTabHeader(this, name);
@@ -118,6 +121,7 @@ public class EditorTab extends JPanel {
     /**
      * Commits the contents of this tab to disk, and marks this tab as clean.
      * If this tab is associated with a scratch file, the user will be prompted to choose a save location.
+     * If any extension vetoes the save, then the save is canceled, and this tab remains dirty.
      */
     public void save() throws IOException {
         if (isScratchFile()) {
@@ -125,23 +129,23 @@ public class EditorTab extends JPanel {
             return;
         }
 
-        Text originalText = text;
-        text = ownerPane.getTextManager().saveText(text, getCurrentText());
-
-        // If we got the same instance back, the save was vetoed, so we are still dirty:
-        if (text == originalText) {
-            return;
+        try {
+            // Execute the save and mark ourselves as clean:
+            text = ownerPane.getTextManager().saveText(text, getCurrentText());
+            isDirty = false;
+            tabHeader.updateLabel(name); // removes the visual dirty indicator
+            tabHeader.resetIcon(); // swap icon colors for more visual indication of clean state
         }
-
-        // Otherwise, our contents were successfully saved, so we can mark this tab as clean:
-        isDirty = false;
-        tabHeader.updateLabel(name); // removes the visual dirty indicator
-        tabHeader.resetIcon(); // swap icon colors for more visual indication of clean state
+        catch (VetoException ignored) {
+            // Save was vetoed by an extension!
+            // Veto already logged by TextManager - just stay dirty and do nothing here.
+        }
     }
 
     /**
      * Prompts the user for a new save location for this tab, saves the contents
      * to that location, then marks this tab as clean.
+     * If any extension vetoes the save, then the save is canceled, and this tab remains dirty.
      */
     public void saveAs() throws IOException {
         JFileChooser fileChooser = MainWindow.getInstance().getFileChooser();
@@ -162,18 +166,16 @@ public class EditorTab extends JPanel {
                 }
             }
 
-            Text originalText = text;
-            text = ownerPane.getTextManager().saveTextAs(text, getCurrentText(), fileChooser.getSelectedFile());
-
-            // If we got the same instance back, the save was vetoed, so we are still dirty:
-            if (text == originalText) {
-                return;
+            try {
+                text = ownerPane.getTextManager().saveTextAs(text, getCurrentText(), fileChooser.getSelectedFile());
+                isDirty = false;
+                setTabName(fileChooser.getSelectedFile().getName());
+                tabHeader.resetIcon();
             }
-
-            // Otherwise, our contents were successfully saved, so we can mark this tab as clean:
-            isDirty = false;
-            setTabName(fileChooser.getSelectedFile().getName());
-            tabHeader.resetIcon();
+            catch (VetoException ignored) {
+                // Save was vetoed by an extension!
+                // Veto already logged by TextManager - just stay dirty and do nothing here.
+            }
         }
     }
 
