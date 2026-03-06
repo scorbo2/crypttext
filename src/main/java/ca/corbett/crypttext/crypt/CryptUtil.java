@@ -65,6 +65,9 @@ public class CryptUtil {
      * @throws Exception if encryption fails or if input parameters are invalid
      */
     public static String encryptAndWrap(String password, String plaintext) throws Exception {
+        if (plaintext == null) {
+            throw new IllegalArgumentException("Plaintext cannot be null");
+        }
         return TEXT_WRAPPER + "\n" + encryptAndEncode(password, plaintext.getBytes(StandardCharsets.UTF_8));
     }
 
