@@ -106,6 +106,13 @@ public class CryptAction extends EnhancedAction {
         String encrypted = extManager.textWillEncrypt(toEncrypt, editorTab.getCryptMetadata());
         if (encrypted != null) {
             editorTab.setCurrentText(encrypted);
+            try {
+                editorTab.save(); // Force an immediate save for extension-based encryption as well.
+            }
+            catch (Exception ex) {
+                // Saving failed after successful encryption by an extension.
+                getMessageUtil().error("Saving after encryption failed: " + ex.getMessage(), ex);
+            }
             return;
         }
 
