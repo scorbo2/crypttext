@@ -121,25 +121,25 @@ public class EditorTab extends JPanel {
     /**
      * Commits the contents of this tab to disk, and marks this tab as clean.
      * If this tab is associated with a scratch file, the user will be prompted to choose a save location.
-     * If any extension vetoes the save, then the save is canceled, and this tab remains dirty.
+     * If any extension vetoes the save, then the save is canceled, a VetoException is thrown,
+     * and this tab remains dirty.
+     *
+     * @throws IOException if an I/O error occurs during the save process.
+     * @throws VetoException if any extension vetoes the save operation.
      */
-    public void save() throws IOException {
+    public void save() throws IOException, VetoException {
         if (isScratchFile()) {
             saveAs();
             return;
         }
 
-        try {
-            // Execute the save and mark ourselves as clean:
-            text = ownerPane.getTextManager().saveText(text, getCurrentText());
-            isDirty = false;
-            tabHeader.updateLabel(name); // removes the visual dirty indicator
-            tabHeader.resetIcon(); // swap icon colors for more visual indication of clean state
-        }
-        catch (VetoException ignored) {
-            // Save was vetoed by an extension!
-            // Veto already logged by TextManager - just stay dirty and do nothing here.
-        }
+        // Execute the save and mark ourselves as clean:
+        // If an extension vetoes the save, then saveText will throw a VetoException,
+        // and we will remain dirty.
+        text = ownerPane.getTextManager().saveText(text, getCurrentText());
+        isDirty = false;
+        tabHeader.updateLabel(name); // removes the visual dirty indicator
+        tabHeader.resetIcon(); // swap icon colors for more visual indication of clean state
     }
 
     /**

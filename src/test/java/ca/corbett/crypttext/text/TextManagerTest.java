@@ -239,14 +239,13 @@ class TextManagerTest {
         textManager.addTextWillLoadListener((manager, f) -> false);
 
         try {
-            Text text = textManager.fromFile(file);
-            assertNull(text);
-            assertEquals(0, textManager.size());
+            textManager.fromFile(file);
             fail("Expected VetoException to be thrown");
         }
         catch (VetoException ignored) {
             // expected exception
         }
+        assertEquals(0, textManager.size());
     }
 
     // ==================== SaveText Tests ====================
@@ -559,6 +558,25 @@ class TextManagerTest {
     }
 
     @Test
+    void testTextWillSaveWithVetoPreventsTextSavedListener() throws Exception {
+        Text text = textManager.newText();
+
+        boolean[] savedCalled = {false};
+        textManager.addTextWillSaveListener((manager, t, n, file) -> false);
+        textManager.addTextSavedListener((manager, s, t) -> savedCalled[0] = true);
+
+        try {
+            textManager.saveTextAs(text, "content", tempDir.resolve("new.txt").toFile());
+            fail("Expected VetoException to be thrown");
+        }
+        catch (VetoException ignored) {
+            // expected exception
+        }
+
+        assertFalse(savedCalled[0]);
+    }
+
+    @Test
     void testRemoveTextWillSaveListenerWorks() throws Exception {
         Text text = textManager.newText();
 
@@ -694,7 +712,7 @@ class TextManagerTest {
         catch (VetoException ignored) {
             // expected exception
         }
-        
+
         assertFalse(savedCalled[0]);
     }
 

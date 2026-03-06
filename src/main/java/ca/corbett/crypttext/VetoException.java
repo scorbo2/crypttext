@@ -1,10 +1,12 @@
 package ca.corbett.crypttext;
 
 /**
- * An exception that can be thrown by extensions to veto an operation.
- * For example, if an extension wants to prevent a file from being loaded,
- * it can throw a VetoException from TextManager.fromFile(). The application
- * will catch the exception and simply not load the file.
+ * An exception that indicates an extension has vetoed an operation.
+ * For example, an extension can register {@code willLoad} or {@code willSave}
+ * listeners and signal a veto (such as by returning {@code false}) to prevent
+ * a file from being loaded or saved. In response, {@code TextManager} throws
+ * a {@code VetoException}, which the application catches and uses to cancel
+ * the operation (for example, by simply not loading the file).
  * <p>
  * This is a checked exception, so that calling code must
  * handle it explicitly.

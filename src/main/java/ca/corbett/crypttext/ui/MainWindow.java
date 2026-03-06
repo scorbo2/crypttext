@@ -175,6 +175,10 @@ public final class MainWindow extends JFrame implements UIReloadable {
                         try {
                             editorTab.save();
                         }
+                        catch (VetoException ignored) {
+                            // An extension vetoed the save!
+                            // Just skip it - EditorTab has already logged the veto (indirectly via TextManager).
+                        }
                         catch (IOException ioe) {
                             // Just log it at this point... we are exiting:
                             logger.log(Level.SEVERE, "Error saving tab \""
@@ -379,7 +383,7 @@ public final class MainWindow extends JFrame implements UIReloadable {
         theme.setStyle("Decrypt", createLogConsoleStyle("Decrypt:", Color.CYAN));
         theme.setStyle("Load", createLogConsoleStyle("Load:", Color.MAGENTA));
         theme.setStyle("Save", createLogConsoleStyle("Save:", Color.MAGENTA));
-        theme.setStyle("Veto", createLogConsoleStyle("veto:", Color.ORANGE));
+        theme.setStyle("Veto", createLogConsoleStyle("Veto:", Color.ORANGE));
 
         // Now let's register our theme and switch to it immediately:
         LogConsole.getInstance().registerTheme("CryptTextTheme", theme, true);

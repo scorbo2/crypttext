@@ -1,5 +1,6 @@
 package ca.corbett.crypttext.ui.actions;
 
+import ca.corbett.crypttext.VetoException;
 import ca.corbett.crypttext.ui.EditorTab;
 import ca.corbett.crypttext.ui.MainWindow;
 import ca.corbett.extras.EnhancedAction;
@@ -40,6 +41,10 @@ public class SaveAction extends EnhancedAction {
         // Now we can delegate to the tab itself:
         try {
             editorTab.save();
+        }
+        catch (VetoException ignored) {
+            // An extension vetoed the save!
+            // Just skip it - EditorTab has already logged the veto (indirectly via TextManager).
         }
         catch (IOException ioe) {
             getMessageUtil().error("Error saving file: " + ioe.getMessage(), ioe);
