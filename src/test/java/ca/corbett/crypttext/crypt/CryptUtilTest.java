@@ -78,7 +78,7 @@ class CryptUtilTest {
         }
     }
 
-    // ------ Encryption tests ---------------
+    // ------ Decryption tests ---------------
 
     @Test
     public void decrypt_withValidInput_shouldSucceed() throws Exception {
