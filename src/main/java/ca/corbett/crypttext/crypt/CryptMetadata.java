@@ -30,7 +30,7 @@ public abstract class CryptMetadata {
     /**
      * Reports whether the text was encrypted when it was loaded.
      */
-    public boolean isWasEncryptedWhenLoaded() {
+    public boolean wasEncryptedWhenLoaded() {
         return wasEncryptedWhenLoaded;
     }
 }
