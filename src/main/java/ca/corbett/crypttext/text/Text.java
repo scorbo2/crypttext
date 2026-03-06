@@ -7,8 +7,7 @@ import java.util.Objects;
 
 /**
  * This class acts as a model object for some text to be viewed or edited in the UI.
- * Information related to the text, such as its associated file and encryption key,
- * are also stored here. Instances of this class are immutable.
+ * Instances of this class are immutable.
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
@@ -18,7 +17,7 @@ public class Text {
     private final File sourceFile;
 
     public Text(String text, File sourceFile) {
-        this.text = text;
+        this.text = text == null ? "" : text;
         this.sourceFile = sourceFile;
     }
 
@@ -46,7 +45,8 @@ public class Text {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) { return false; }
         Text text1 = (Text)o;
-        return Objects.equals(text, text1.text) && Objects.equals(sourceFile, text1.sourceFile);
+        return Objects.equals(text, text1.text)
+                && Objects.equals(sourceFile, text1.sourceFile);
     }
 
     @Override

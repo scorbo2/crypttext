@@ -1,6 +1,7 @@
 package ca.corbett.crypttext.extensions;
 
 import ca.corbett.crypttext.Version;
+import ca.corbett.crypttext.crypt.CryptMetadata;
 import ca.corbett.crypttext.extensions.builtin.TestExtension;
 import ca.corbett.crypttext.ui.TabStateManager;
 import ca.corbett.extensions.ExtensionManager;
@@ -206,6 +207,26 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
     }
 
     /**
+     * Queries all loaded extensions to see if any of them want to supply crypt metadata
+     * about the raw text that is about to be encrypted or decrypted.
+     * The first extension that returns a non-null value from this method will be used as the
+     * CryptMetadata for the text in question. If no extension returns a non-null value,
+     * then the application will use DefaultCryptMetadata.
+     *
+     * @param rawText The raw text that is about to be encrypted or decrypted.
+     * @return a CryptMetadata instance supplied by an extension, or null to allow the application to use the default.
+     */
+    public CryptMetadata generateCryptMetadata(String rawText) {
+        for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
+            CryptMetadata metadata = extension.generateCryptMetadata(rawText);
+            if (metadata != null) {
+                return metadata; // if any extension returns a non-null value, we're done.
+            }
+        }
+        return null; // No extension supplied metadata, so allow the application to use the default.
+    }
+
+    /**
      * Gives all loaded extensions an opportunity to override the application's built-in encryption
      * scheme by returning a non-null (and typically base64-encoded) String representation of the encrypted data.
      * <p>
@@ -213,12 +234,13 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
      *     subsequent extensions in the load order sequence from being sent this message.
      * </p>
      *
-     * @param textToEncrypt The plaintext that is about to be encrypted.
+     * @param textToEncrypt The text that is about to be encrypted.
+     * @param cryptMetadata The CryptMetadata instance associated with the text that is about to be encrypted.
      * @return an encrypted version of the text, or null to allow the application to handle encryption.
      */
-    public String textWillEncrypt(String textToEncrypt) {
+    public String textWillEncrypt(String textToEncrypt, CryptMetadata cryptMetadata) {
         for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
-            String result = extension.textWillEncrypt(textToEncrypt);
+            String result = extension.textWillEncrypt(textToEncrypt, cryptMetadata);
             if (result != null) {
                 return result; // if any extension returns a non-null value, we're done.
             }
@@ -235,11 +257,12 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
      * </p>
      *
      * @param textToDecrypt The encrypted text that is about to be decrypted (typically base64 encoded).
+     * @param cryptMetadata The CryptMetadata instance associated with the text that is about to be decrypted.
      * @return a decrypted version of the text, or null to allow the application to handle decryption.
      */
-    public String textWillDecrypt(String textToDecrypt) {
+    public String textWillDecrypt(String textToDecrypt, CryptMetadata cryptMetadata) {
         for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
-            String result = extension.textWillDecrypt(textToDecrypt);
+            String result = extension.textWillDecrypt(textToDecrypt, cryptMetadata);
             if (result != null) {
                 return result; // if any extension returns a non-null value, we're done.
             }

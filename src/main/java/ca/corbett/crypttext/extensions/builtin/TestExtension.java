@@ -2,6 +2,7 @@ package ca.corbett.crypttext.extensions.builtin;
 
 import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.Version;
+import ca.corbett.crypttext.crypt.CryptMetadata;
 import ca.corbett.crypttext.extensions.CryptTextExtension;
 import ca.corbett.crypttext.extensions.ExtraComponentPosition;
 import ca.corbett.crypttext.ui.EditorTabPane;
@@ -132,15 +133,20 @@ public class TestExtension extends CryptTextExtension {
     }
 
     @Override
-    public String textWillEncrypt(String textToEncrypt) {
-        log.info("textWillEncrypt: text length: " + textToEncrypt.length());
-        return null;
+    public CryptMetadata generateCryptMetadata(String rawText) {
+        return null; // This extension does not supply a custom encryption scheme
     }
 
     @Override
-    public String textWillDecrypt(String textToDecrypt) {
+    public String textWillEncrypt(String textToEncrypt, CryptMetadata metadata) {
+        log.info("textWillEncrypt: text length: " + textToEncrypt.length());
+        return null; // This extension does not supply a custom encryption scheme
+    }
+
+    @Override
+    public String textWillDecrypt(String textToDecrypt, CryptMetadata metadata) {
         log.info("textWillDecrypt: text length: " + textToDecrypt.length());
-        return null;
+        return null; // This extension does not supply a custom encryption scheme
     }
 
     @Override

@@ -1,0 +1,9 @@
+=== This file is encrypted with CryptText ===
+
+You will need the CryptText application to view or edit this file.
+Project URL: https://github.com/scorbo2/crypttext
+
+Do not modify the contents below! Doing so will corrupt the file.
+and make it unreadable. Use the CryptText application to edit this file.
+
+==CryptText section begins==
