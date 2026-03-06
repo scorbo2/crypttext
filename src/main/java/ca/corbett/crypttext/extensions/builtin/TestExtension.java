@@ -12,6 +12,7 @@ import ca.corbett.extras.EnhancedAction;
 import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.io.KeyStrokeManager;
 import ca.corbett.extras.properties.AbstractProperty;
+import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.KeyStrokeProperty;
 
 import javax.swing.JComponent;
@@ -44,6 +45,9 @@ public class TestExtension extends CryptTextExtension {
 
     private static final Logger log = Logger.getLogger(TestExtension.class.getName());
 
+    private static final String AUTO_VETO_LOAD_PROP = "TestExtension.Options.autoVetoLoad";
+    private static final String AUTO_VETO_SAVE_PROP = "TestExtension.Options.autoVetoSave";
+
     private final AppExtensionInfo extInfo;
     private final EnhancedAction logDumpAction = new LogDumpAction();
 
@@ -72,6 +76,9 @@ public class TestExtension extends CryptTextExtension {
                                         logDumpAction)
                           .setHelpText("Generates a diagnostic log dump"));
 
+        props.add(new BooleanProperty(AUTO_VETO_LOAD_PROP, "Veto all load operations", false));
+        props.add(new BooleanProperty(AUTO_VETO_SAVE_PROP, "Veto all save operations", false));
+
         return props;
     }
 
@@ -94,12 +101,22 @@ public class TestExtension extends CryptTextExtension {
 
     @Override
     public boolean fileWillLoad(File toLoad) {
+        boolean shouldVeto = getBooleanProp(AUTO_VETO_LOAD_PROP);
+        if (shouldVeto) {
+            log.info("fileWillLoad: vetoing load of " + toLoad.getAbsolutePath());
+            return false;
+        }
         log.info("fileWillLoad: " + toLoad.getAbsolutePath());
         return true;
     }
 
     @Override
     public boolean fileWillSave(File toSave, String newContents, File destFile) {
+        boolean shouldVeto = getBooleanProp(AUTO_VETO_SAVE_PROP);
+        if (shouldVeto) {
+            log.info("fileWillSave: vetoing save of " + toSave.getAbsolutePath() + " -> " + destFile.getAbsolutePath());
+            return false;
+        }
         log.info("fileWillSave: " + toSave.getAbsolutePath() + " -> " + destFile.getAbsolutePath());
         return true;
     }
@@ -137,6 +154,21 @@ public class TestExtension extends CryptTextExtension {
     @Override
     public TabStateManager getTabStateManager() {
         return new TestTabStateManager();
+    }
+
+    /**
+     * Quick shorthand method to look up the given boolean property and return its current value.
+     * You'll get false if the named property is not found.
+     */
+    private boolean getBooleanProp(String propName) {
+        AbstractProperty prop = AppConfig.getInstance().getPropertiesManager().getProperty(propName);
+        if (prop instanceof BooleanProperty) {
+            return ((BooleanProperty)prop).getValue();
+        }
+        else {
+            log.warning("Expected boolean property for name: " + propName + ", but got: " + prop);
+            return false;
+        }
     }
 
     /**

@@ -36,6 +36,13 @@ public class OpenFileAction extends EnhancedAction {
             AppConfig.getInstance().setLastBrowseDirectory(selectedFile.getParentFile());
             try {
                 Text text = MainWindow.getInstance().getTextManager().fromFile(selectedFile);
+
+                // TextManager.fromFile() can return null if an extension vetoes the load.
+                if (text == null) {
+                    // No need to log this - presumably the vetoing extension has already notified the user.
+                    return;
+                }
+
                 MainWindow.getInstance().getEditorTabPane().clearIfScratch();
                 MainWindow.getInstance().getEditorTabPane().newTextTab(text, selectedFile.getName());
             }
