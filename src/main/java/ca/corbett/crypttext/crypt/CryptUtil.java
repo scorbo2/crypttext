@@ -195,7 +195,7 @@ public class CryptUtil {
         if (password == null || password.isEmpty()) {
             throw new IllegalArgumentException("Password cannot be null or empty");
         }
-        if (encrypted == null || encrypted.length < SALT_LENGTH + IV_LENGTH + 1) {
+        if (encrypted == null || encrypted.length < SALT_LENGTH + IV_LENGTH + (TAG_LENGTH / 8)) {
             throw new IllegalArgumentException("Invalid encrypted data");
         }
 
