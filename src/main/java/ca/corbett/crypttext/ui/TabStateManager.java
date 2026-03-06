@@ -30,7 +30,7 @@ public interface TabStateManager {
      * Restores the previously-saved list of open tabs, if any. If no saved state is found,
      * or if the saved state is invalid, then this method should do nothing and simply return.
      * This method is invoked on application startup, before the main window is shown.
-     * The editorTab will likely have one "untitled" empty tab open at this point (assuming
+     * The editorTabPane will likely have one "untitled" empty tab open at this point (assuming
      * no command-line args were given). You can use editorTabPane.clearIfScratch() to remove
      * the "untitled" tab before populating the restored tabs, if you want.
      * <p>
