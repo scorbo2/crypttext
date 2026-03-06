@@ -1,6 +1,7 @@
 package ca.corbett.crypttext.ui.actions;
 
 import ca.corbett.crypttext.AppConfig;
+import ca.corbett.crypttext.VetoException;
 import ca.corbett.crypttext.text.Text;
 import ca.corbett.crypttext.ui.MainWindow;
 import ca.corbett.extras.EnhancedAction;
@@ -36,15 +37,12 @@ public class OpenFileAction extends EnhancedAction {
             AppConfig.getInstance().setLastBrowseDirectory(selectedFile.getParentFile());
             try {
                 Text text = MainWindow.getInstance().getTextManager().fromFile(selectedFile);
-
-                // TextManager.fromFile() can return null if an extension vetoes the load.
-                if (text == null) {
-                    // No need to log this - presumably the vetoing extension has already notified the user.
-                    return;
-                }
-
                 MainWindow.getInstance().getEditorTabPane().clearIfScratch();
                 MainWindow.getInstance().getEditorTabPane().newTextTab(text, selectedFile.getName());
+            }
+            catch (VetoException ignored) {
+                // An extension vetoed the load!
+                // Just skip it - TextManager has already logged the veto.
             }
             catch (IOException ioe) {
                 getMessageUtil().error("Error opening file: " + ioe.getMessage(), ioe);

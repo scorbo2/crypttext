@@ -2,6 +2,7 @@ package ca.corbett.crypttext.ui;
 
 import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.CryptTextResourceLoader;
+import ca.corbett.crypttext.VetoException;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 import ca.corbett.crypttext.text.Text;
 import ca.corbett.crypttext.text.TextManager;
@@ -190,6 +191,10 @@ public class EditorTabPane extends JTabbedPane {
             if (result == MessageUtil.YES) {
                 try {
                     editorTab.save();
+                }
+                catch (VetoException ignored) {
+                    // An extension vetoed the save! Just skip it - TextManager has already logged the veto.
+                    return; // abort the close action if we couldn't save
                 }
                 catch (IOException ioe) {
                     getMessageUtil().error("Error saving file",

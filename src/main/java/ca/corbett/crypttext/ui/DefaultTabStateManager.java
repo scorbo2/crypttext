@@ -2,6 +2,7 @@ package ca.corbett.crypttext.ui;
 
 import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.Version;
+import ca.corbett.crypttext.VetoException;
 import ca.corbett.crypttext.text.Text;
 import ca.corbett.extras.io.FileSystemUtil;
 
@@ -101,24 +102,29 @@ public class DefaultTabStateManager implements TabStateManager {
                             + " - file does not exist or is not readable.");
                     continue;
                 }
-                Text restoredText = editorTabPane.getTextManager().fromFile(toRestore);
 
-                // TextManager may return null if some extension vetoes the load.
-                if (restoredText == null) {
-                    // No need to log... the vetoing extension presumably already notified the user.
-                    continue;
+                try {
+                    // Try to restore the text content for this tab:
+                    Text restoredText = editorTabPane.getTextManager().fromFile(toRestore);
+                    if (!cleared) {
+                        cleared = true; // only need to do this once
+                        editorTabPane.clearIfScratch();
+                    }
+
+                    editorTabPane.newTextTab(restoredText, toRestore.getName());
                 }
-
-                // Remove the default "untitled" tab if one is present:
-                if (!cleared) {
-                    cleared = true; // only need to do this once
-                    editorTabPane.clearIfScratch();
+                catch (VetoException ignored) {
+                    // An extension vetoed the load!
+                    // Just skip it - TextManager has already logged the veto.
                 }
-
-                editorTabPane.newTextTab(restoredText, toRestore.getName());
+                catch (IOException ioe) {
+                    // If one of the files fails to load, we should still continue to try the others:
+                    logger.log(Level.WARNING, "Error restoring tab: " + path + " - " + ioe.getMessage(), ioe);
+                }
             }
         }
         catch (IOException ioe) {
+            // We failed to read the TAB_STATE_FILE for some reason.
             // Just log it... we don't want to block startup over this:
             logger.log(Level.WARNING, "Error reading tab state file: " + ioe.getMessage(), ioe);
         }
