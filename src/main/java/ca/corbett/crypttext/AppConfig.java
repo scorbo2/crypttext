@@ -282,7 +282,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
 
         restoreTabsOnStartupProp = new BooleanProperty("UI.Editor tabs.restoreTabsOnStartup",
                                                        "Restore previously-open tabs on startup",
-                                                       true); // completely arbitrary default value here
+                                                       true);
         props.add(restoreTabsOnStartupProp);
 
         // Hidden props (persisted but never directly shown to the user):

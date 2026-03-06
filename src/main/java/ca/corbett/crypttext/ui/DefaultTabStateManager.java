@@ -47,20 +47,18 @@ public class DefaultTabStateManager implements TabStateManager {
             return;
         }
 
-        // We'll use an extremely simple flat text file for this, one file path per line.
-        // We may want to smarten this up later to store additional information,
-        // but for V1, this will do:
+        // This default implementation just uses a simple flat text file for persistence.
+        // Extensions can optionally supply a database-backed implementation, or json, or yaml, or whatever.
         StringBuilder tabList = new StringBuilder();
         for (EditorTab editorTab : editorTabPane.getEditorTabs()) {
 
             // Skip scratch files and files with no content:
             if (editorTab.getTextInstance().getSourceFile() == null
-                    || editorTab.isScratchFile()
-                    || editorTab.getCurrentText().isBlank()) {
+                    || editorTab.isScratchFile()) {
                 continue;
             }
 
-            // This is a non-scratch file with actual content, so we'll save it:
+            // This is a non-scratch file, so we'll save it:
             tabList.append(editorTab.getTextInstance().getSourceFile().getAbsolutePath()).append("\n");
         }
         try {
@@ -104,6 +102,12 @@ public class DefaultTabStateManager implements TabStateManager {
                     continue;
                 }
                 Text restoredText = editorTabPane.getTextManager().fromFile(toRestore);
+
+                // TextManager may return null if some extension vetoes the load.
+                if (restoredText == null) {
+                    // No need to log... the vetoing extension presumably already notified the user.
+                    continue;
+                }
 
                 // Remove the default "untitled" tab if one is present:
                 if (!cleared) {

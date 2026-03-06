@@ -158,7 +158,6 @@ public final class MainWindow extends JFrame implements UIReloadable {
      */
     public void cleanup() {
         logger.info("Shutting down: MainWindow cleanup invoked.");
-        CryptTextExtensionManager.getInstance().deactivateAll();
 
         // There is no "cancel" option possible here, because this method is invoked
         // when the application is definitely about to close (for example, via UpdateManager
@@ -209,6 +208,12 @@ public final class MainWindow extends JFrame implements UIReloadable {
                        "Error disposing TextManager during cleanup: " + ioe.getMessage(),
                        ioe);
         }
+
+        // Deactivate all extensions:
+        CryptTextExtensionManager.getInstance().deactivateAll();
+
+        // Release our Single instance lock if we have it. (This is idempotent, safe to invoke)
+        SingleInstanceManager.getInstance().release();
 
         logger.info("Cleanup completed.");
     }
