@@ -1,12 +1,11 @@
 package ca.corbett.crypttext;
 
+import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
+import ca.corbett.crypttext.ui.MainWindow;
 import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.SingleInstanceManager;
 import ca.corbett.updates.UpdateManager;
 import ca.corbett.updates.UpdateSources;
-
-import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
-import ca.corbett.crypttext.ui.MainWindow;
 
 import javax.swing.SwingUtilities;
 import java.io.File;
@@ -76,12 +75,21 @@ public class Main {
             logger.info("Switching to Look and Feel: " + AppConfig.getInstance().getLookAndFeelClassName());
             LookAndFeelManager.switchLaf(AppConfig.getInstance().getLookAndFeelClassName());
 
-            // Show the main window:
+            // Instantiate MainWindow:
             MainWindow mainWindow = MainWindow.getInstance();
+
+            // We want to EITHER restore the tabs that were showing on the last application run,
+            // OR the ones given to us from command-line arguments, but NOT both. If we were
+            // given args on the command line, those will take priority:
+            if (args.length == 0) {
+                mainWindow.restoreTabState();
+            }
+
+            // Show the main window:
             mainWindow.setLocationRelativeTo(null); // center on screen
             mainWindow.setVisible(true);
 
-            // Process any start arguments we were given:
+            // Now, process any command-line args:
             mainWindow.processStartArgs(Arrays.asList(args));
         });
     }

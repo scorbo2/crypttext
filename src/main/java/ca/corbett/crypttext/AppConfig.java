@@ -77,6 +77,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private IntegerProperty tabIconSizeProp;
     private BooleanProperty closeLastTabExitsProp;
     private DirectoryProperty lastBrowseDirProp;
+    private BooleanProperty restoreTabsOnStartupProp;
 
     // These will be used in the menu bar and with KeyStrokeManager:
     // (they could also be added to buttons or popup menus as needed)
@@ -221,6 +222,14 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     }
 
     /**
+     * Reports whether the previously-loaded tabs from the last application run
+     * should be automatically restored on startup.
+     */
+    public boolean isRestoreTabsOnStartup() {
+        return restoreTabsOnStartupProp.getValue();
+    }
+
+    /**
      * This is where you can define the configuration properties for your application.
      * These properties will be displayed in the PropertiesDialog, and persisted
      * to the properties file automatically.
@@ -270,6 +279,11 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
                                                     "Exit application when the last editor tab is closed",
                                                     true); // completely arbitrary default value here
         props.add(closeLastTabExitsProp);
+
+        restoreTabsOnStartupProp = new BooleanProperty("UI.Editor tabs.restoreTabsOnStartup",
+                                                       "Restore previously-open tabs on startup",
+                                                       true);
+        props.add(restoreTabsOnStartupProp);
 
         // Hidden props (persisted but never directly shown to the user):
         lastBrowseDirProp = new DirectoryProperty("hidden.props.lastBrowseDirectory",
