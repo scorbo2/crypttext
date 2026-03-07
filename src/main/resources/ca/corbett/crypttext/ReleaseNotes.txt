@@ -2,6 +2,7 @@ CryptText Release Notes
 ==============================================
 
 Version 1.0 - [TODO release date here] Initial release
+  #28 - Improve handling of incorrect passwords.
   #26 - Add option to forget password for current tab.
   #22 - Add VetoException and explicit veto handling.
   #20 - TestExtension: add auto-veto options

@@ -1,8 +1,8 @@
 package ca.corbett.crypttext.crypt;
 
+import ca.corbett.crypttext.DecryptionFailedException;
 import org.junit.jupiter.api.Test;
 
-import javax.crypto.AEADBadTagException;
 import java.util.Base64;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -106,8 +106,8 @@ class CryptUtilTest {
             CryptUtil.decrypt("wrong!", encrypted);
             fail("Wrong password should have thrown, but didn't.");
         }
-        catch (AEADBadTagException expected) {
-            // THEN we should get an AEADBadTagException, which indicates authentication failure:
+        catch (DecryptionFailedException expected) {
+            // THEN we should get an DecryptionFailedException, which indicates authentication failure
         }
     }
 

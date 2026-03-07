@@ -1,9 +1,11 @@
 package ca.corbett.crypttext.crypt;
 
+import ca.corbett.crypttext.DecryptionFailedException;
 import ca.corbett.extras.ResourceLoader;
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
 import org.bouncycastle.crypto.params.Argon2Parameters;
 
+import javax.crypto.AEADBadTagException;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -213,7 +215,16 @@ public class CryptUtil {
         GCMParameterSpec gcmSpec = new GCMParameterSpec(TAG_LENGTH, iv);
         cipher.init(Cipher.DECRYPT_MODE, keySpec, gcmSpec);
 
-        return cipher.doFinal(ciphertext);
+        try {
+            return cipher.doFinal(ciphertext);
+        }
+        catch (AEADBadTagException ex) {
+            // Authentication failed, which means either the password is wrong or the data is corrupted.
+            // Cryptographically, (and by design), we can't distinguish between these two cases.
+            // But, we don't want to throw a user-unfriendly "tag mismatch" error, so
+            // let's wrap it in something more user-friendly:
+            throw new DecryptionFailedException(ex);
+        }
     }
 
     /**
