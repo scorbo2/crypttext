@@ -242,14 +242,18 @@ public class EditorTab extends JPanel implements UIReloadable {
         }
 
         // Resolve the text that we want to save (handles encryption if necessary):
-        String textToSave = resolveTextForSave();
+        EncryptedText textToSave = resolveTextForSave();
         if (textToSave == null) {
             return; // user canceled during encryption step, so we can abort here
         }
 
         // Now we can try to save the encrypted text to disk, without changing our in-memory contents:
         // This will throw a VetoException if any extension vetoes the save, or possibly an IOException:
-        diskContents = ownerPane.getTextManager().saveText(diskContents, textToSave);
+        diskContents = ownerPane.getTextManager().saveText(diskContents, textToSave.getText());
+
+        // Update our CryptMetadata, which may have changed above:
+        // (we do this after the save, in case the save fails or was vetoed):
+        setCryptMetadata(textToSave.getCryptMetadata());
 
         // Okay, if we get here, our contents were saved in an encrypted state. Hooray!
         // We have noted our new disk contents, and we can now mark ourselves as NOT dirty.
@@ -286,12 +290,13 @@ public class EditorTab extends JPanel implements UIReloadable {
 
             try {
                 // Handle encryption of our in-memory contents before saving, if needed:
-                String textToSave = resolveTextForSave();
+                EncryptedText textToSave = resolveTextForSave();
                 if (textToSave == null) {
                     return; // user canceled encryption prompt
                 }
                 File newFile = fileChooser.getSelectedFile();
-                diskContents = ownerPane.getTextManager().saveTextAs(diskContents, textToSave, newFile);
+                diskContents = ownerPane.getTextManager().saveTextAs(diskContents, textToSave.getText(), newFile);
+                setCryptMetadata(textToSave.getCryptMetadata()); // update this, as it may have changed
                 markClean();
 
                 // If we were a scratch file, we now have an actual name.
@@ -301,6 +306,7 @@ public class EditorTab extends JPanel implements UIReloadable {
             catch (VetoException ignored) {
                 // Save was vetoed by an extension!
                 // Veto already logged by TextManager - just stay dirty and do nothing here.
+                markDirty();
             }
         }
     }
@@ -315,6 +321,7 @@ public class EditorTab extends JPanel implements UIReloadable {
      * @throws Exception If the save operation fails or is vetoed by an extension, or if the decrypt fails.
      */
     public void saveUnencrypted() throws Exception {
+        boolean wasEncrypted = isEncrypted();
         File sourceFile = diskContents.getSourceFile();
         JFileChooser fileChooser = MainWindow.getInstance().getFileChooser();
         fileChooser.setCurrentDirectory(diskContents.getSourceFile().getParentFile());
@@ -356,6 +363,12 @@ public class EditorTab extends JPanel implements UIReloadable {
                 // We're in a wonky state now, because we've possibly already decrypted in memory.
                 // So, mark ourselves as dirty so the user will know that we need a save.
                 markDirty();
+
+                // If we performed an in-memory decryption above, the user should be warned:
+                if (wasEncrypted) {
+                    getMessageUtil().warning("Save vetoed",
+                                             "The save was vetoed by an extension. Note: your tab is now showing decrypted content.");
+                }
             }
         }
     }
@@ -523,17 +536,21 @@ public class EditorTab extends JPanel implements UIReloadable {
     /**
      * Determines the text content to write to disk, re-encrypting if necessary.
      * If the text was loaded from an encrypted file but is currently decrypted in-memory,
-     * it will be re-encrypted before being returned. Updates cryptMetadata as a side effect.
+     * it will be re-encrypted before being returned.
+     * <p>
+     *     Note that the EncryptedText that is returned will have a new CryptMetadata instance
+     *     that may not match the one currently associated with this EditorTab, if re-encryption was necessary.
+     * </p>
      *
      * @return The text to write to disk, or null if the user canceled the operation.
      * @throws Exception if encryption fails.
      */
-    private String resolveTextForSave() throws Exception {
+    private EncryptedText resolveTextForSave() throws Exception {
         // Easy case #1: if this text was never encrypted, and is not encrypted now, just return it as-is:
         // Easy case #2: if the text is encrypted in-memory, regardless where it came from, we can just return as-is:
         if ((!getCryptMetadata().wasEncryptedWhenLoaded() && !isEncrypted()) // case 1
                 || isEncrypted()) { // case 2
-            return getMemoryContents();
+            return new EncryptedText(getMemoryContents(), getCryptMetadata()); // return what we had
         }
 
         // If we get here, then the text was loaded from an encrypted file, but is currently decrypted in-memory.
@@ -543,11 +560,8 @@ public class EditorTab extends JPanel implements UIReloadable {
             return null; // user canceled, so we can abort here
         }
 
-        // If an extension handled the encryption above, then our cryptMetadata may have been replaced
-        // by one supplied by that extension. So, update ours to match the given one:
-        // (we may also have been given a password, so we need to make a note of that anyway)
-        setCryptMetadata(encryptedText.getCryptMetadata());
-        return encryptedText.getText();
+        // Update whatever CryptMetadata we had with the new one supplied by handleEncrypt above:
+        return new EncryptedText(encryptedText.getText(), encryptedText.getCryptMetadata());
     }
 
     /**
@@ -588,7 +602,7 @@ public class EditorTab extends JPanel implements UIReloadable {
             // How did we get here? It could be that this text was originally encrypted by an extension
             // that is no longer available. That's not an error condition.
             // We'll just switch it to use our built-in scheme. This will force a password prompt below.
-            defaultCryptMetadata = new DefaultCryptMetadata(CryptUtil.isCryptTextWrapped(toEncrypt));
+            defaultCryptMetadata = new DefaultCryptMetadata(true); // unconditional true
         }
 
         // Prompt for a password if we don't already have one:
