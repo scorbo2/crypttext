@@ -5,6 +5,7 @@ Version 1.0 - [TODO release date here] Initial release
   #30 - New option: show full path in main window title bar.
   #29 - New option: show line numbers in editor.
   #28 - Improve handling of incorrect passwords.
+  #27 - Smarten up our encryption/decryption workflows.
   #26 - Add option to forget password for current tab.
   #22 - Add VetoException and explicit veto handling.
   #20 - TestExtension: add auto-veto options

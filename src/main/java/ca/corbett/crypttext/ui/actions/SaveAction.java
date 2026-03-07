@@ -8,7 +8,6 @@ import ca.corbett.extras.MessageUtil;
 
 import java.awt.Component;
 import java.awt.event.ActionEvent;
-import java.io.IOException;
 import java.util.logging.Logger;
 
 /**
@@ -49,7 +48,7 @@ public class SaveAction extends EnhancedAction {
             // An extension vetoed the save!
             // Just skip it - EditorTab has already logged the veto (indirectly via TextManager).
         }
-        catch (IOException ioe) {
+        catch (Exception ioe) {
             getMessageUtil().error("Error saving file: " + ioe.getMessage(), ioe);
         }
     }

@@ -54,13 +54,13 @@ public class DefaultTabStateManager implements TabStateManager {
         for (EditorTab editorTab : editorTabPane.getEditorTabs()) {
 
             // Skip scratch files and files with no content:
-            if (editorTab.getTextInstance().getSourceFile() == null
+            if (editorTab.getDiskContents().getSourceFile() == null
                     || editorTab.isScratchFile()) {
                 continue;
             }
 
             // This is a non-scratch file, so we'll save it:
-            tabList.append(editorTab.getTextInstance().getSourceFile().getAbsolutePath()).append("\n");
+            tabList.append(editorTab.getDiskContents().getSourceFile().getAbsolutePath()).append("\n");
         }
         try {
             FileSystemUtil.writeStringToFile(tabList.toString(), TAB_STATE_FILE);

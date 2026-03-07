@@ -1,6 +1,7 @@
 package ca.corbett.crypttext.extensions;
 
 import ca.corbett.crypttext.crypt.CryptMetadata;
+import ca.corbett.crypttext.crypt.EncryptedText;
 import ca.corbett.crypttext.ui.TabStateManager;
 import ca.corbett.extensions.AppExtension;
 
@@ -135,12 +136,18 @@ public abstract class CryptTextExtension extends AppExtension {
      *     The first extension that returns a non-null value from this method will prevent
      *     subsequent extensions in the load order sequence from being sent this message.
      * </p>
+     * <p>
+     *     Extensions are free to ignore the supplied CryptMetadata instance, and can
+     *     return one of their own in the resulting EncryptedText instance.
+     *     This allows extensions to embed metadata regarding key management, encryption parameters,
+     *     or whatever else.
+     * </p>
      *
      * @param textToEncrypt The text that is about to be encrypted.
      * @param cryptMetadata The CryptMetadata instance associated with the text that is about to be encrypted.
      * @return an encrypted version of the text, or null to allow the application to handle encryption.
      */
-    public String textWillEncrypt(String textToEncrypt, CryptMetadata cryptMetadata) {
+    public EncryptedText textWillEncrypt(String textToEncrypt, CryptMetadata cryptMetadata) {
         return null;
     }
 
@@ -154,11 +161,10 @@ public abstract class CryptTextExtension extends AppExtension {
      *     subsequent extensions in the load order sequence from being sent this message.
      * </p>
      *
-     * @param textToDecrypt The encrypted text that is about to be decrypted.
-     * @param cryptMetadata The CryptMetadata instance associated with the text that is about to be decrypted.
+     * @param encryptedText The text and metadata of the text that is about to be decrypted.
      * @return a decrypted version of the text, or null to allow the application to handle decryption.
      */
-    public String textWillDecrypt(String textToDecrypt, CryptMetadata cryptMetadata) {
+    public String textWillDecrypt(EncryptedText encryptedText) {
         return null;
     }
 

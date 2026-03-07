@@ -238,7 +238,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
             }
             else {
                 // Show file stats, if the file exists and isn't a scratch file:
-                File sourceFile = tab.getTextInstance().getSourceFile();
+                File sourceFile = tab.getDiskContents().getSourceFile();
                 if (sourceFile == null || !sourceFile.exists() || tab.isScratchFile()) {
                     pathLabel.setText("(No file)"); // this is a lie, but scratch files don't count as actual files
                     sizeOnDiskLabel.setText("");
@@ -251,7 +251,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
                     dateLabel.setText(format.format(sourceFile.lastModified()));
                 }
 
-                updateTextStatsLabel(tab.getCurrentText());
+                updateTextStatsLabel(tab.getMemoryContents());
 
                 // We'll show the encryption scheme name if the text was loaded from an
                 // encrypted file, or if it is currently encrypted in memory:

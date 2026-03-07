@@ -6,6 +6,7 @@ import ca.corbett.crypttext.VetoException;
 import ca.corbett.crypttext.crypt.CryptMetadata;
 import ca.corbett.crypttext.crypt.CryptUtil;
 import ca.corbett.crypttext.crypt.DefaultCryptMetadata;
+import ca.corbett.crypttext.crypt.EncryptedText;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 import ca.corbett.crypttext.text.Text;
 import ca.corbett.crypttext.ui.actions.UIReloadAction;
@@ -21,6 +22,7 @@ import javax.swing.event.CaretEvent;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,12 +33,12 @@ import java.util.logging.Logger;
  * This tab tracks "dirty" status, and gives visual indications of whether
  * there are unsaved changes. Metadata about the file currently
  * loaded in this tab is also stored here, and can be accessed by extensions
- * via the getTextInstance() method. The current text contents of the tab can be accessed
- * via getCurrentText() - note that this may differ from the text in the Text instance,
- * if there are unsaved changes. Use getTextInstance().getText() to retrieve the
+ * via the getDiskContents() method. The current text contents of the tab can be accessed
+ * via getMemoryContents() - note that this may differ from the disk contents,
+ * if there are unsaved changes. Use getDiskContents().getText() to retrieve the
  * text as it was when this EditorTab was created or last saved.
- * Use getCurrentText() to retrieve the current text in the editor, which may include unsaved changes.
- * You can use setCurrentText() to replace the text in this editor tab with new text - this
+ * Use getMemoryContents() to retrieve the current text in the editor, which may include unsaved changes.
+ * You can use setMemoryContents() to replace the text in this editor tab with new text - this
  * will automatically mark the tab as dirty.
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
@@ -67,31 +69,32 @@ public class EditorTab extends JPanel implements UIReloadable {
     private final List<PositionListener> positionListeners;
     private final List<ContentChangeListener> contentChangeListeners;
     private final EditorTabPane ownerPane;
-    private final JTextPane textPane;
+    private final JTextPane textPane; // stores our memoryContents
     private final JScrollPane scrollPane;
     private final LineNumberGutter gutter;
     private final EditorTabHeader tabHeader;
     private String name;
-    private Text text;
+    private Text diskContents;
     private CryptMetadata cryptMetadata;
     private boolean isDirty;
+    private boolean eventsEnabled = true; // used to prevent firing events during programmatic text changes
 
     /**
      * Creates a new, empty editor tab with the given name.
      *
      * @param ownerPane The EditorTabPane that will contain this tab.
      * @param name      The name for this tab.
-     * @param text      The Text instance associated with this tab.
+     * @param diskContents      The Text instance associated with this tab.
      */
-    public EditorTab(EditorTabPane ownerPane, String name, Text text) {
+    public EditorTab(EditorTabPane ownerPane, String name, Text diskContents) {
         if (ownerPane == null) {
             throw new IllegalArgumentException("ownerPane cannot be null");
         }
         if (name == null) {
             throw new IllegalArgumentException("name cannot be null");
         }
-        if (text == null) {
-            throw new IllegalArgumentException("Given Text instance cannot be null");
+        if (diskContents == null) {
+            throw new IllegalArgumentException("diskContents cannot be null");
         }
         this.positionListeners = new ArrayList<>();
         this.contentChangeListeners = new ArrayList<>();
@@ -106,8 +109,8 @@ public class EditorTab extends JPanel implements UIReloadable {
         scrollPane.setRowHeaderView(AppConfig.getInstance().isShowLineNumbers() ? gutter : null);
         wrapperPanel.add(scrollPane, BorderLayout.CENTER);
         add(wrapperPanel, BorderLayout.CENTER);
-        this.text = text;
-        textPane.setText(this.text.getText());
+        this.diskContents = diskContents;
+        textPane.setText(this.diskContents.getText()); // initial value
         this.cryptMetadata = generateCryptMetadata();
         textPane.getDocument().addDocumentListener(new DocListener());
         isDirty = false;
@@ -133,7 +136,7 @@ public class EditorTab extends JPanel implements UIReloadable {
      */
     public boolean isScratchFile() {
         try {
-            return ownerPane.getTextManager().isScratchFile(text.getSourceFile());
+            return ownerPane.getTextManager().isScratchFile(diskContents.getSourceFile());
         }
         catch (IOException ignored) {
         }
@@ -147,7 +150,7 @@ public class EditorTab extends JPanel implements UIReloadable {
      * was loaded from an encrypted file, you can use getCryptMetadata().wasEncryptedWhenLoaded().
      */
     public boolean isEncrypted() {
-        return CryptUtil.isCryptTextWrapped(getCurrentText());
+        return CryptUtil.isCryptTextWrapped(getMemoryContents());
     }
 
     /**
@@ -171,7 +174,11 @@ public class EditorTab extends JPanel implements UIReloadable {
      * Updates the name of this tab.
      */
     public void setTabName(String newName) {
+        if (newName == null || newName.isBlank()) {
+            throw new IllegalArgumentException("Tab name cannot be null or blank");
+        }
         this.name = newName;
+        ownerPane.updateTabName(this, newName);
         tabHeader.updateLabel(newName);
     }
 
@@ -188,7 +195,7 @@ public class EditorTab extends JPanel implements UIReloadable {
      */
     public void setCryptMetadata(CryptMetadata newMetadata) {
         if (newMetadata == null) {
-            newMetadata = new DefaultCryptMetadata(CryptUtil.isCryptTextWrapped(getCurrentText()));
+            newMetadata = new DefaultCryptMetadata(CryptUtil.isCryptTextWrapped(getMemoryContents()));
         }
         this.cryptMetadata = newMetadata;
     }
@@ -206,34 +213,59 @@ public class EditorTab extends JPanel implements UIReloadable {
 
     /**
      * Commits the contents of this tab to disk, and marks this tab as clean.
-     * If this tab is associated with a scratch file, the user will be prompted to choose a save location.
+     * If the text contents were loaded from an encrypted file, this method will ONLY save encrypted contents.
+     * If our current contents are still encrypted, we just save as-is.
+     * If our current contents have been decrypted in-memory, we will re-encrypt before saving,
+     * without changing the in-memory contents. That is, the user will still see the decrypted contents in this tab.
+     * The tab will NOT be marked as dirty in that case (even though in-memory contents and disk contents will differ).
+     * <p>
+     * If the password associated with this tab has been forgotten, we will prompt for it before saving.
+     * This method NEVER saves decrypted text to disk if the text was originally encrypted - the user must
+     * use the "save unencrypted" action to explicitly do that.
+     * </p>
+     * <p>
+     * If this tab is associated with a scratch file, this method will immediately defer to the "save as" flow.
+     * </p>
+     * <p>
+     * Application extensions have veto power over save operations!
      * If any extension vetoes the save, then the save is canceled, a VetoException is thrown,
      * and this tab remains dirty.
+     * </p>
      *
-     * @throws IOException if an I/O error occurs during the save process.
-     * @throws VetoException if any extension vetoes the save operation.
+     * @throws Exception on I/O error, encryption error, or if any extension vetoes the save operation.
      */
-    public void save() throws IOException, VetoException {
+    public void save() throws Exception {
+        // If this is a scratch file, force a "save as" flow instead:
         if (isScratchFile()) {
             saveAs();
             return;
         }
 
-        // Execute the save and mark ourselves as clean:
-        // If an extension vetoes the save, then saveText will throw a VetoException,
-        // and we will remain dirty.
-        text = ownerPane.getTextManager().saveText(text, getCurrentText());
-        isDirty = false;
-        tabHeader.updateLabel(name); // removes the visual dirty indicator
-        tabHeader.resetIcon(); // swap icon colors for more visual indication of clean state
+        // Resolve the text that we want to save (handles encryption if necessary):
+        String textToSave = resolveTextForSave();
+        if (textToSave == null) {
+            return; // user canceled during encryption step, so we can abort here
+        }
+
+        // Now we can try to save the encrypted text to disk, without changing our in-memory contents:
+        // This will throw a VetoException if any extension vetoes the save, or possibly an IOException:
+        diskContents = ownerPane.getTextManager().saveText(diskContents, textToSave);
+
+        // Okay, if we get here, our contents were saved in an encrypted state. Hooray!
+        // We have noted our new disk contents, and we can now mark ourselves as NOT dirty.
+        // That may seem wrong, because our in-memory contents do not match our disk contents,
+        // but it makes sense when you consider the above flow: the in-memory contents were
+        // successfully encrypted and saved to disk.
+        markClean();
     }
 
     /**
      * Prompts the user for a new save location for this tab, saves the contents
      * to that location, then marks this tab as clean.
      * If any extension vetoes the save, then the save is canceled, and this tab remains dirty.
+     * Text that was loaded from an encrypted file will be saved in an encrypted state.
      */
-    public void saveAs() throws IOException {
+    public void saveAs() throws Exception {
         JFileChooser fileChooser = MainWindow.getInstance().getFileChooser();
         int result = fileChooser.showSaveDialog(MainWindow.getInstance());
         if (result == JFileChooser.APPROVE_OPTION) {
@@ -253,16 +285,151 @@ public class EditorTab extends JPanel implements UIReloadable {
             }
 
             try {
-                text = ownerPane.getTextManager().saveTextAs(text, getCurrentText(), fileChooser.getSelectedFile());
-                isDirty = false;
-                setTabName(fileChooser.getSelectedFile().getName());
-                tabHeader.resetIcon();
+                // Handle encryption of our in-memory contents before saving, if needed:
+                String textToSave = resolveTextForSave();
+                if (textToSave == null) {
+                    return; // user canceled encryption prompt
+                }
+                File newFile = fileChooser.getSelectedFile();
+                diskContents = ownerPane.getTextManager().saveTextAs(diskContents, textToSave, newFile);
+                markClean();
+
+                // If we were a scratch file, we now have an actual name.
+                // If we weren't a scratch file, our name has likely changed.
+                setTabName(newFile.getName());
             }
             catch (VetoException ignored) {
                 // Save was vetoed by an extension!
                 // Veto already logged by TextManager - just stay dirty and do nothing here.
             }
         }
+    }
+
+    /**
+     * Decrypts the contents of this tab in memory (if needed) and saves the
+     * raw plaintext to a file of the user's choosing. We will discard any
+     * CryptMetadata associated with this tab, and immediately forget any
+     * associated password. It is assumed that whatever action triggers
+     * this method has already prompted the user for confirmation.
+     *
+     * @throws Exception If the save operation fails or is vetoed by an extension, or if the decrypt fails.
+     */
+    public void saveUnencrypted() throws Exception {
+        File sourceFile = diskContents.getSourceFile();
+        JFileChooser fileChooser = MainWindow.getInstance().getFileChooser();
+        fileChooser.setCurrentDirectory(diskContents.getSourceFile().getParentFile());
+        fileChooser.setSelectedFile(sourceFile); // default to the source file, but user must confirm it.
+        int result = fileChooser.showSaveDialog(MainWindow.getInstance());
+        if (result == JFileChooser.APPROVE_OPTION) {
+            // If the target file already exists, prompt to confirm the overwrite:
+            // (our TextManager doesn't care and will happily overwrite, but we can add a safety check here)
+            if (fileChooser.getSelectedFile().exists()) {
+                int overwriteResult = getMessageUtil().askYesNo(
+                        "Confirm overwrite",
+                        "The file \""
+                                + fileChooser.getSelectedFile().getName()
+                                + "\" already exists. Do you want to overwrite it?"
+                );
+                if (overwriteResult != MessageUtil.YES) {
+                    return; // user chose not to overwrite, so abort the save action
+                }
+            }
+
+            try {
+                if (isEncrypted()) {
+                    decryptInMemory(); // Will handle prompting for password as needed, may throw if this fails.
+                }
+
+                File newFile = fileChooser.getSelectedFile();
+                diskContents = ownerPane.getTextManager().saveTextAs(diskContents, getMemoryContents(), newFile);
+                markClean();
+
+                // If we were a scratch file, we now have an actual name.
+                // If we weren't a scratch file, our name has likely changed.
+                setTabName(newFile.getName());
+
+                // Overwrite any CryptMetadata we had and immediately forget our password:
+                setCryptMetadata(new DefaultCryptMetadata(false));
+            }
+            catch (VetoException ignored) {
+                // Save was vetoed by an extension!
+                // We're in a wonky state now, because we've possibly already decrypted in memory.
+                // So, mark ourselves as dirty so the user will know that we need a save.
+                markDirty();
+            }
+        }
+    }
+
+    /**
+     * Encrypts the current in-memory text contents of this tab,
+     * and updates the in-memory contents to the encrypted version.
+     * This does NOT trigger a save, or modify the disk contents in any way.
+     * If the text was already encrypted, this method does nothing.
+     * This operation is subject to user cancellation,
+     * in which case the in-memory contents will remain unchanged.
+     *
+     * @return true on success, false for user cancel.
+     * @throws Exception if encryption fails due to an unexpected error
+     */
+    public boolean encryptInMemory() throws Exception {
+        log.info("Encrypt: encrypting " + getDiskContents().getSourceFile().getAbsolutePath());
+        EncryptedText encrypted = handleEncrypt(getMemoryContents(), getCryptMetadata());
+        if (encrypted != null) {
+            // User successfully encrypted the text, so update our in-memory contents:
+            eventsEnabled = false; // prevent firing events during this programmatic text change
+            setMemoryContents(encrypted.getText());
+            setCryptMetadata(encrypted.getCryptMetadata()); // update to match the new scheme and/or password
+            eventsEnabled = true;
+
+            // Unlike decryptInMemory(), we DO want to mark ourselves as dirty here,
+            // even if we were originally loaded from an encrypted file, because every
+            // call to encrypt() generates new ciphertext that will not match our
+            // original disk contents. So, we are dirty now, even if the user changed
+            // nothing after encryption but before now.
+            // "But wait," you ask, "how can the ciphertext be different every time,
+            // even if the user selects the same password?"
+            // The answer is because the salt and IV are randomly generated each time.
+            markDirty();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Decrypts the current in-memory text contents of this tab,
+     * and updates the in-memory contents to the decrypted version.
+     * This does NOT trigger a save, or modify the disk contents in any way.
+     * If the text was not actually encrypted, this method does nothing.
+     * This operation is subject to user cancellation, extension veto,
+     * or decryption failure due to wrong password or corrupted text,
+     * in which case the in-memory contents will remain unchanged.
+     *
+     * @return true on success, false for user cancel
+     * @throws Exception if decryption fails due to an unexpected error
+     */
+    public boolean decryptInMemory() throws Exception {
+        log.info("Decrypt: decrypting " + getDiskContents().getSourceFile().getAbsolutePath());
+        boolean wasDirty = isDirty(); // make a note of our current state
+        String decrypted = handleDecrypt(getMemoryContents());
+        if (decrypted != null) {
+            // User successfully decrypted the text, so update our in-memory contents:
+            eventsEnabled = false; // prevent firing events during this programmatic text change
+            setMemoryContents(decrypted);
+            eventsEnabled = true;
+
+            // If we weren't dirty before, then we still aren't.
+            // All we did was decrypt. Our in-memory contents don't match our disk contents,
+            // but conceptually, we have changed nothing.
+            if (!wasDirty) {
+                markClean();
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -285,30 +452,43 @@ public class EditorTab extends JPanel implements UIReloadable {
 
     /**
      * Returns the text currently held in this editor tab.
+     * This will not match the value of getDiskContents() if there are unsaved changes,
+     * or if encryption/decryption has taken place since this EditorTab was created or last saved.
      */
-    public String getCurrentText() {
+    public String getMemoryContents() {
         return textPane.getText();
     }
 
     /**
      * Replaces the text currently held in this editor tab with the given new text, and marks the tab as dirty.
+     * Does NOT commit anything to disk.
      */
-    public void setCurrentText(String newText) {
+    public void setMemoryContents(String newText) {
         textPane.setText(newText);
         markDirty();
     }
 
     /**
-     * Returns the Text instance associated with this editor tab.
-     * Text instances are immutable. That means the returned instance's text
-     * may not match the current text in this editor tab. To retrieve
-     * the current (possibly not yet saved) text contents of this
-     * tab, use the getCurrentText() method instead.
+     * Returns the Text instance that was used to create this EditorTab, or which was
+     * created the last time this EditorTab was saved. The returned instance is immutable.
+     * To retrieve the current (possibly unsaved) text contents of this tab, use getMemoryContents() instead.
      */
-    public Text getTextInstance() {
-        return text;
+    public Text getDiskContents() {
+        return diskContents;
     }
 
+    /**
+     * Invoked internally to mark this editor tab as clean (no unsaved changes).
+     */
+    private void markClean() {
+        isDirty = false;
+        tabHeader.updateLabel(name); // removes the visual dirty indicator
+        tabHeader.resetIcon(); // swap icon colors for more visual indication of clean state
+    }
+
+    /**
+     * Invoked internally to mark this editor tab as dirty (has unsaved changes).
+     */
     private void markDirty() {
         isDirty = true;
         tabHeader.updateLabel(name); // adds the visual dirty indicator
@@ -330,19 +510,164 @@ public class EditorTab extends JPanel implements UIReloadable {
      */
     private CryptMetadata generateCryptMetadata() {
         // Check if any extension wants to provide custom CryptMetadata for this Text instance:
-        CryptMetadata cryptMetadata = CryptTextExtensionManager.getInstance().generateCryptMetadata(getCurrentText());
+        CryptMetadata cryptMetadata = CryptTextExtensionManager.getInstance()
+                                                               .generateCryptMetadata(getMemoryContents());
         if (cryptMetadata != null) {
             return cryptMetadata;
         }
 
         // If not, use the default implementation:
-        return new DefaultCryptMetadata(CryptUtil.isCryptTextWrapped(getCurrentText()));
+        return new DefaultCryptMetadata(CryptUtil.isCryptTextWrapped(getMemoryContents()));
     }
 
     /**
-     * Will return an Icon appropriate for this editor tab, based on current
-     * application settings. There is no caching - a new icon with appropriate
-     * sizing will be returned every time this method is invoked.
+     * Determines the text content to write to disk, re-encrypting if necessary.
+     * If the text was loaded from an encrypted file but is currently decrypted in-memory,
+     * it will be re-encrypted before being returned. Updates cryptMetadata as a side effect.
+     *
+     * @return The text to write to disk, or null if the user canceled the operation.
+     * @throws Exception if encryption fails.
+     */
+    private String resolveTextForSave() throws Exception {
+        // Easy case #1: if this text was never encrypted, and is not encrypted now, just return it as-is:
+        // Easy case #2: if the text is encrypted in-memory, regardless where it came from, we can just return as-is:
+        if ((!getCryptMetadata().wasEncryptedWhenLoaded() && !isEncrypted()) // case 1
+                || isEncrypted()) { // case 2
+            return getMemoryContents();
+        }
+
+        // If we get here, then the text was loaded from an encrypted file, but is currently decrypted in-memory.
+        // This is the tricky case: we need to re-encrypt before saving.
+        EncryptedText encryptedText = handleEncrypt(getMemoryContents(), getCryptMetadata());
+        if (encryptedText == null) {
+            return null; // user canceled, so we can abort here
+        }
+
+        // If an extension handled the encryption above, then our cryptMetadata may have been replaced
+        // by one supplied by that extension. So, update ours to match the given one:
+        // (we may also have been given a password, so we need to make a note of that anyway)
+        setCryptMetadata(encryptedText.getCryptMetadata());
+        return encryptedText.getText();
+    }
+
+    /**
+     * Internal utility method to handle the logic of encrypting the given text.
+     * Does not affect the contents of this EditorTab.
+     *
+     * @param toEncrypt     Any text contents.
+     * @param cryptMetadata The CryptMetadata instance associated with the text to be encrypted.
+     * @return The encrypted version of the given text, or null if encryption is canceled by the user.
+     * @throws Exception if the encryption operation fails.
+     */
+    private EncryptedText handleEncrypt(String toEncrypt, CryptMetadata cryptMetadata) throws Exception {
+        if (toEncrypt == null) {
+            throw new IllegalArgumentException("toEncrypt cannot be null");
+        }
+
+        // Really wonky case: if we are given a string that is already encrypted, just return it:
+        if (CryptUtil.isCryptTextWrapped(toEncrypt)) {
+            log.warning("handleEncrypt: This text is already encrypted... returning as-is.");
+            return new EncryptedText(toEncrypt, cryptMetadata);
+        }
+
+        // First, give extensions a chance to handle the encryption:
+        CryptTextExtensionManager extManager = CryptTextExtensionManager.getInstance();
+        EncryptedText encryptedText = extManager.textWillEncrypt(toEncrypt, cryptMetadata);
+        if (encryptedText != null) {
+            return encryptedText; // we're done - some extension did the work for us!
+        }
+
+        // If no one answered, then check to see if we have a DefaultCryptMetadata already:
+        DefaultCryptMetadata defaultCryptMetadata;
+        if (cryptMetadata instanceof DefaultCryptMetadata existingCryptMetadata) {
+            defaultCryptMetadata = existingCryptMetadata;
+        }
+
+        // Otherwise, we can just create a new one.
+        else {
+            // How did we get here? It could be that this text was originally encrypted by an extension
+            // that is no longer available. That's not an error condition.
+            // We'll just switch it to use our built-in scheme. This will force a password prompt below.
+            defaultCryptMetadata = new DefaultCryptMetadata(CryptUtil.isCryptTextWrapped(toEncrypt));
+        }
+
+        // Prompt for a password if we don't already have one:
+        String password = defaultCryptMetadata.getPassword();
+        if (password == null || password.isEmpty()) {
+            password = getMessageUtil().askText("Enter password:", "");
+            if (password == null) {
+                return null; // user canceled the prompt, so abort the encryption action
+            }
+            defaultCryptMetadata.setPassword(password);
+        }
+
+        // Now we're good to go:
+        String cipherText = CryptUtil.encryptAndWrap(defaultCryptMetadata.getPassword(), toEncrypt);
+        return new EncryptedText(cipherText, defaultCryptMetadata);
+    }
+
+    /**
+     * Internal utility method to handle the logic of decrypting the given text.
+     * Does not change the text contents of this EditorTab.
+     * May update our cryptMetadata as a side effect, to store the password if it was not already set.
+     *
+     * @param toDecrypt Any text contents.
+     * @return The decrypted version of the given text, or null if user cancels.
+     * @throws Exception if any extension vetoes the decryption operation or if the decrypt itself fails.
+     */
+    private String handleDecrypt(String toDecrypt) throws Exception {
+        if (toDecrypt == null) {
+            throw new IllegalArgumentException("toDecrypt cannot be null");
+        }
+
+        // Very wonky case: if the given text is not actually encrypted, just return it as-is:
+        if (!CryptUtil.isCryptTextWrapped(toDecrypt)) {
+            log.warning("handleDecrypt: This text is not encrypted... returning as-is.");
+            return toDecrypt;
+        }
+
+        // First, give extensions a chance to handle the decryption:
+        CryptTextExtensionManager extManager = CryptTextExtensionManager.getInstance();
+        String decrypted = extManager.textWillDecrypt(new EncryptedText(toDecrypt, getCryptMetadata()));
+        if (decrypted != null) {
+            return decrypted; // we're done - some extension did the work for us!
+        }
+
+        // If no one answered, then make sure our Text instance has a DefaultCryptMetadata:
+        if (!(getCryptMetadata() instanceof DefaultCryptMetadata defaultCryptMetadata)) {
+            log.warning("Unknown CryptMetadata type: " + getCryptMetadata().getClass().getName());
+            throw new Exception("Unknown encryption scheme! " +
+                                        "This text was encrypted by an extension that is not available." +
+                                        " Unable to decrypt.");
+        }
+
+        // If the password is not already set, prompt the user for it:
+        if (defaultCryptMetadata.getPassword() == null || defaultCryptMetadata.getPassword().isEmpty()) {
+            String password = getMessageUtil().askText("Enter password:", "");
+            if (password == null) {
+                // User canceled the prompt, so just skip it.
+                return null;
+            }
+
+            defaultCryptMetadata.setPassword(password); // store this password (deliberate side effect)
+        }
+
+        try {
+            // Decrypt and return the result:
+            return CryptUtil.unwrapAndDecrypt(defaultCryptMetadata.getPassword(), toDecrypt);
+        }
+        catch (Exception ex) {
+            // If anything goes wrong, immediately forget the password we just tried:
+            defaultCryptMetadata.setPassword(null);
+            throw ex; // caller can handle the exception
+        }
+    }
+
+    /**
+     * Will return a "locked" or an "unlocked" icon for this tab,
+     * depending on the state of the diskContents (NOT the in-memory contents!).
+     * Even if the tab is currently showing decrypted contents, what matters
+     * is whether the contents on disk are encrypted.
      * <p>
      * If tab header icons are disabled in application settings,
      * this method will return null.
@@ -353,7 +678,9 @@ public class EditorTab extends JPanel implements UIReloadable {
             return null; // easy path
         }
 
-        boolean isEncrypted = CryptUtil.isCryptTextWrapped(getCurrentText());
+        // Note we deliberately do NOT check getMemoryContents() here... we don't care!
+        // What matters is whether the saved contents are encrypted or not.
+        boolean isEncrypted = getCryptMetadata().wasEncryptedWhenLoaded();
         int iconSize = AppConfig.getInstance().getTabIconSize();
         return isEncrypted
                 ? CryptTextResourceLoader.getLockIcon(iconSize)
@@ -376,6 +703,10 @@ public class EditorTab extends JPanel implements UIReloadable {
     }
 
     private void firePositionChangedEvent(CaretEvent caretEvent) {
+        if (!eventsEnabled) {
+            return; // don't fire events if we're in the middle of a programmatic text change
+        }
+
         // If no one is listening, don't bother:
         if (positionListeners.isEmpty()) {
             return;
@@ -414,6 +745,10 @@ public class EditorTab extends JPanel implements UIReloadable {
     }
 
     private void fireContentChangedEvent() {
+        if (!eventsEnabled) {
+            return; // don't fire events if we're in the middle of a programmatic text change
+        }
+
         // If no one is listening, don't bother:
         if (contentChangeListeners.isEmpty()) {
             return;
@@ -421,7 +756,7 @@ public class EditorTab extends JPanel implements UIReloadable {
 
         // Notify listeners:
         try {
-            final String newContents = getCurrentText();
+            final String newContents = getMemoryContents();
             // Iterate over a copy of the list to avoid ConcurrentModificationExceptions:
             for (ContentChangeListener listener : new ArrayList<>(contentChangeListeners)) {
                 listener.onContentChange(newContents);

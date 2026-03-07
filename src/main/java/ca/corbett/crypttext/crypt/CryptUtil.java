@@ -70,7 +70,7 @@ public class CryptUtil {
         if (plaintext == null) {
             throw new IllegalArgumentException("Plaintext cannot be null");
         }
-        return TEXT_WRAPPER + "\n" + encryptAndEncode(password, plaintext.getBytes(StandardCharsets.UTF_8));
+        return TEXT_WRAPPER + "\n" + encryptAndEncode(password, plaintext.getBytes(StandardCharsets.UTF_8)) + "\n";
     }
 
     /**

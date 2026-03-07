@@ -2,8 +2,6 @@ package ca.corbett.crypttext.ui.actions;
 
 import ca.corbett.crypttext.DecryptionFailedException;
 import ca.corbett.crypttext.crypt.CryptUtil;
-import ca.corbett.crypttext.crypt.DefaultCryptMetadata;
-import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 import ca.corbett.crypttext.ui.EditorTab;
 import ca.corbett.crypttext.ui.MainWindow;
 import ca.corbett.extras.EnhancedAction;
@@ -46,133 +44,27 @@ public class CryptAction extends EnhancedAction {
             return;
         }
 
-        if (CryptUtil.isCryptTextWrapped(editorTab.getCurrentText())) {
-            log.info("Decrypt: decrypting " + editorTab.getTextInstance().getSourceFile().getAbsolutePath());
-            handleDecrypt(editorTab);
-        }
-        else {
-            log.info("Encrypt: encrypting " + editorTab.getTextInstance().getSourceFile().getAbsolutePath());
-            handleEncrypt(editorTab);
-        }
-    }
-
-    private void handleDecrypt(EditorTab editorTab) {
-        final String toDecrypt = editorTab.getCurrentText();
-        CryptTextExtensionManager extManager = CryptTextExtensionManager.getInstance();
-
-        // First, give extensions a chance to handle the decryption:
-        String decrypted = extManager.textWillDecrypt(toDecrypt, editorTab.getCryptMetadata());
-        if (decrypted != null) {
-            editorTab.setCurrentText(decrypted);
+        if (CryptUtil.isCryptTextWrapped(editorTab.getMemoryContents())) {
             try {
-                editorTab.save(); // Force an immediate save for extension-based decryption.
+                editorTab.decryptInMemory();
+            }
+            catch (DecryptionFailedException ex) {
+                // Decryption failed due to wrong password or corrupted text. Show a user-friendly message.
+                getMessageUtil().warning(
+                        ex.getMessage()); // DON'T supply the exception, or it logs the whole stack trace.
             }
             catch (Exception ex) {
-                // Saving failed after successful encryption by an extension.
-                getMessageUtil().error("Saving after decryption failed: " + ex.getMessage(), ex);
+                // For all other exceptions, log the whole stack trace:
+                getMessageUtil().error("Error decrypting text: " + ex.getMessage(), ex);
             }
-            return;
         }
-
-        // If no one answered, then make sure the Text instance has a DefaultCryptMetadata:
-        if (!(editorTab.getCryptMetadata() instanceof DefaultCryptMetadata cryptMetadata)) {
-            log.warning("Unknown CryptMetadata type: " + editorTab.getCryptMetadata().getClass().getName());
-            getMessageUtil().error("Unknown encryption scheme",
-                                   "This text was encrypted by an extension that is not available." +
-                                           "\nUnable to decrypt.");
-            return;
-        }
-
-        // If the password is not already set, prompt the user for it:
-        if (cryptMetadata.getPassword() == null || cryptMetadata.getPassword().isEmpty()) {
-            String password = getMessageUtil().askText("Enter password:", "");
-            if (password == null) {
-                // User canceled the prompt, so just skip it.
-                return;
-            }
-
-            cryptMetadata.setPassword(password);
-        }
-
-        try {
-            // Use the current text in the tab, NOT the text from the Text instance!
-            // User could have copy+pasted encrypted text into the tab since it was loaded.
-            decrypted = CryptUtil.unwrapAndDecrypt(cryptMetadata.getPassword(), toDecrypt);
-            editorTab.setCurrentText(decrypted); // tab is now dirty!
-            editorTab.save(); // Force an immediate save.
-        }
-        catch (DecryptionFailedException ex) {
-            // Decryption failed due to wrong password or corrupted text. Show a user-friendly message.
-            getMessageUtil().warning(ex.getMessage()); // DON'T supply the exception, or it logs the whole stack trace.
-
-            // Immediately forget this password! It's almost certainly wrong.
-            cryptMetadata.setPassword(null);
-        }
-        catch (Exception ex) {
-            // For all other exceptions, we'll show the whole stack trace and original message:
-            getMessageUtil().error("Decryption failed: " + ex.getMessage(), ex);
-
-            // This is debatable, but we will also forget the password in this case:
-            cryptMetadata.setPassword(null);
-        }
-    }
-
-    private void handleEncrypt(EditorTab editorTab) {
-        final String toEncrypt = editorTab.getCurrentText();
-        CryptTextExtensionManager extManager = CryptTextExtensionManager.getInstance();
-
-        // First, give extensions a chance to handle the encryption:
-        String encrypted = extManager.textWillEncrypt(toEncrypt, editorTab.getCryptMetadata());
-        if (encrypted != null) {
-            editorTab.setCurrentText(encrypted);
+        else {
             try {
-                editorTab.save(); // Force an immediate save for extension-based encryption.
+                editorTab.encryptInMemory();
             }
             catch (Exception ex) {
-                // Saving failed after successful encryption by an extension.
-                getMessageUtil().error("Saving after encryption failed: " + ex.getMessage(), ex);
+                getMessageUtil().error("Error encrypting text: " + ex.getMessage(), ex);
             }
-            return;
-        }
-
-        // If no one answered, then check to see if we have a DefaultCryptMetadata already:
-        DefaultCryptMetadata cryptMetadata;
-        if (editorTab.getCryptMetadata() instanceof DefaultCryptMetadata existingCryptMetadata) {
-            cryptMetadata = existingCryptMetadata;
-        }
-
-        // Otherwise, we can just create a new one.
-        else {
-            // Note that we overwrite whatever CryptMetadata was there before... it could be
-            // that this text was originally encrypted by an extension that is no longer available.
-            // That's not an error condition. We'll just switch it to use our built-in scheme.
-            cryptMetadata = new DefaultCryptMetadata(CryptUtil.isCryptTextWrapped(toEncrypt));
-            editorTab.setCryptMetadata(cryptMetadata);
-        }
-
-        // Prompt for a password if we don't already have one.
-        String password = cryptMetadata.getPassword();
-        if (password == null || password.isEmpty()) {
-            password = getMessageUtil().askText("Enter password:", "");
-            if (password == null) {
-                // User canceled the prompt, so just skip it.
-                // We do this after we replace the CryptMetadata, so that we have at
-                // least overwritten the old, stale one.
-                return;
-            }
-            cryptMetadata.setPassword(password);
-        }
-
-        // Now we're good to go:
-        try {
-            encrypted = CryptUtil.encryptAndWrap(cryptMetadata.getPassword(), toEncrypt);
-            editorTab.setCurrentText(encrypted); // tab is now dirty!
-            editorTab.save(); // Force an immediate save.
-        }
-        catch (Exception ex) {
-            // Encryption failed - probably some unexpected error with the text or metadata.
-            // Just show an error message and leave the text as-is.
-            getMessageUtil().error("Encryption failed: " + ex.getMessage(), ex);
         }
     }
 
