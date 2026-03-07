@@ -1,5 +1,6 @@
 package ca.corbett.crypttext.ui.actions;
 
+import ca.corbett.crypttext.DecryptionFailedException;
 import ca.corbett.crypttext.crypt.CryptUtil;
 import ca.corbett.crypttext.crypt.DefaultCryptMetadata;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
@@ -100,12 +101,18 @@ public class CryptAction extends EnhancedAction {
             editorTab.setCurrentText(decrypted); // tab is now dirty!
             editorTab.save(); // Force an immediate save.
         }
-        catch (Exception ex) {
-            // Decryption failed - probably wrong password or corrupted text.
-            // Just show an error message and leave the text as-is.
-            getMessageUtil().error("Decryption failed: " + ex.getMessage(), ex);
+        catch (DecryptionFailedException ex) {
+            // Decryption failed due to wrong password or corrupted text. Show a user-friendly message.
+            getMessageUtil().warning(ex.getMessage()); // DON'T supply the exception, or it logs the whole stack trace.
 
             // Immediately forget this password! It's almost certainly wrong.
+            cryptMetadata.setPassword(null);
+        }
+        catch (Exception ex) {
+            // For all other exceptions, we'll show the whole stack trace and original message:
+            getMessageUtil().error("Decryption failed: " + ex.getMessage(), ex);
+
+            // This is debatable, but we will also forget the password in this case:
             cryptMetadata.setPassword(null);
         }
     }
