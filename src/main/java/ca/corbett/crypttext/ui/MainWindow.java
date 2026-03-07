@@ -437,9 +437,11 @@ public final class MainWindow extends JFrame implements UIReloadable {
     }
 
     /**
-     * Invoked when the current tab changes in our tabbed pane.
+     * Intelligently updates the main window title bar based on currently-selected file, if anyu.
      * If the "show full path in title bar" option is enabled, we'll show
-     * the full path and name of the currently-shown file (if any).
+     * the full path and name of the currently-shown file.
+     * For scratch files (files created in-memory and not yet saved), we'll just show
+     * the tab name instead (example: "Untitled 1").
      */
     public void updateTitleBar() {
         // Start with our default title:
@@ -453,10 +455,16 @@ public final class MainWindow extends JFrame implements UIReloadable {
         // Get the current tab (it might not be an EditorTab! - ignore if not):
         Component c = editorTabPane.getSelectedComponent();
         if (c instanceof EditorTab editorTab) { // this also filters out null (no tab open)
-            String title = editorTab.isScratchFile()
-                    ? editorTab.getTabName() // for scratch files, just show the tab name (e.g. "Untitled")
-                    : editorTab.getTextInstance().getSourceFile().getAbsolutePath(); // otherwise, show the full path
-            setTitle(Version.FULL_NAME + " - " + title);
+
+            // for scratch files or null files, just show the tab name (e.g. "Untitled 1")
+            if (editorTab.isScratchFile() || editorTab.getTextInstance().getSourceFile() == null) {
+                setTitle(Version.FULL_NAME + " - " + editorTab.getTabName());
+            }
+
+            // Otherwise, use the full path:
+            else {
+                setTitle(Version.FULL_NAME + " - " + editorTab.getTextInstance().getSourceFile().getAbsolutePath());
+            }
         }
     }
 
