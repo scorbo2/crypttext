@@ -125,7 +125,7 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
      * Interrogates extensions to see if they have JMenuItems that they want to add
      * to one of our built-in top-level menus.
      *
-     * @param topLevelMenu The name of the top-level menu: File, Edit, or Help.
+     * @param topLevelMenu The name of the top-level menu: File, Edit, Crypt, or Help.
      * @return A list of 0 or more menu items supplied by enabled extensions.
      */
     public List<JMenuItem> getMenuItems(String topLevelMenu) {

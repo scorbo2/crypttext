@@ -6,6 +6,7 @@ import ca.corbett.crypttext.ui.actions.AboutAction;
 import ca.corbett.crypttext.ui.actions.CryptAction;
 import ca.corbett.crypttext.ui.actions.ExitAction;
 import ca.corbett.crypttext.ui.actions.ExtensionManagerAction;
+import ca.corbett.crypttext.ui.actions.ForgetPasswordAction;
 import ca.corbett.crypttext.ui.actions.LogConsoleAction;
 import ca.corbett.crypttext.ui.actions.NewTabAction;
 import ca.corbett.crypttext.ui.actions.OpenFileAction;
@@ -64,6 +65,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private static final String KEY_SAVE_FILE = KEYSTROKE_PREFIX + "General.saveFile";
     private static final String KEY_SAVE_FILE_AS = KEYSTROKE_PREFIX + "General.saveFileAs";
     private static final String KEY_CRYPT = KEYSTROKE_PREFIX + "General.crypt";
+    private static final String KEY_FORGET_PASSWORD = KEYSTROKE_PREFIX + "General.forgetPassword";
     private static final String KEY_PROPERTIES = KEYSTROKE_PREFIX + "General.properties";
     private static final String KEY_EXTENSIONS = KEYSTROKE_PREFIX + "General.extensionManager";
     private static final String KEY_LOG_CONSOLE = KEYSTROKE_PREFIX + "General.logConsole";
@@ -91,6 +93,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private Action saveFileAction;
     private Action saveFileAsAction;
     private Action cryptAction;
+    private Action forgetPasswordAction;
     private Action propertiesAction;
     private Action extensionManagerAction;
     private Action logConsoleAction;
@@ -144,6 +147,10 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         return cryptAction;
     }
 
+    public Action getForgetPasswordAction() {
+        return forgetPasswordAction;
+    }
+
     public Action getPropertiesAction() {
         return propertiesAction;
     }
@@ -177,6 +184,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_SAVE_FILE));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_SAVE_FILE_AS));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_CRYPT));
+        keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_FORGET_PASSWORD));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_PROPERTIES));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_EXTENSIONS));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_LOG_CONSOLE));
@@ -265,6 +273,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         saveFileAction = new SaveAction();
         saveFileAsAction = new SaveAsAction();
         cryptAction = new CryptAction();
+        forgetPasswordAction = new ForgetPasswordAction();
         propertiesAction = new PropertiesAction();
         extensionManagerAction = new ExtensionManagerAction();
         logConsoleAction = new LogConsoleAction();
@@ -327,6 +336,10 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         props.add(new KeyStrokeProperty(KEY_CRYPT, "Encrypt/Decrypt:",
                                         KeyStrokeManager.parseKeyStroke("Ctrl+D"), // D for "decrypt/crypt" :)
                                         cryptAction)
+                          .setAllowBlank(true));
+        props.add(new KeyStrokeProperty(KEY_FORGET_PASSWORD, "Forget Password:",
+                                        KeyStrokeManager.parseKeyStroke("F7"),
+                                        forgetPasswordAction)
                           .setAllowBlank(true));
         props.add(new KeyStrokeProperty(KEY_PROPERTIES, "Properties Dialog:",
                                         KeyStrokeManager.parseKeyStroke("Ctrl+P"),

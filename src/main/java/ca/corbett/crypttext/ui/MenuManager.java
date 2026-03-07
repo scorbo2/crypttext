@@ -2,7 +2,6 @@ package ca.corbett.crypttext.ui;
 
 import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
-import ca.corbett.crypttext.ui.actions.ForgetPasswordAction;
 
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -16,7 +15,7 @@ import java.util.List;
  * <p>
  * <b>Extensions can supply menu items!</b> - extensions will be queried for top-level menus,
  * if they supply any, and extensions can also optionally supply extra menu items for the File,
- * Edit, and Help menus.
+ * Edit, Crypt, and Help menus.
  * </p>
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
@@ -125,7 +124,17 @@ public class MenuManager {
         cryptMenu.removeAll();
 
         cryptMenu.add(new JMenuItem(AppConfig.getInstance().getCryptAction()));
-        cryptMenu.add(new JMenuItem(new ForgetPasswordAction()));
+        cryptMenu.add(new JMenuItem(AppConfig.getInstance().getForgetPasswordAction()));
+
+        // Add any items to this list from our extensions, if any:
+        List<JMenuItem> items = CryptTextExtensionManager.getInstance().getMenuItems("Crypt");
+        if (!items.isEmpty()) {
+            fileMenu.addSeparator();
+            for (JMenuItem item : items) {
+                cryptMenu.add(item);
+            }
+        }
+
     }
 
     private void rebuildHelpMenu() {

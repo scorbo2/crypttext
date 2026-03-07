@@ -40,8 +40,15 @@ public class ForgetPasswordAction extends EnhancedAction {
 
         CryptMetadata cryptMetadata = editorTab.getCryptMetadata();
         if (cryptMetadata instanceof DefaultCryptMetadata defaultCryptMetadata) {
-            defaultCryptMetadata.setPassword(null);
-            getMessageUtil().info("Password forgotten", "The password for the current tab has been forgotten.");
+            if (defaultCryptMetadata.getPassword() == null) {
+                getMessageUtil().info("No password to forget",
+                                      "The current tab does not have a password associated with it.");
+            }
+            else {
+                defaultCryptMetadata.setPassword(null);
+                getMessageUtil().info("Password forgotten",
+                                      "The password for the current tab has been forgotten.");
+            }
         }
         else {
             // This is a very weird message to show to a user, but it is what it is:
