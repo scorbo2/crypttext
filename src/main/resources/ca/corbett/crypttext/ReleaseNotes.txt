@@ -2,6 +2,7 @@ CryptText Release Notes
 ==============================================
 
 Version 1.0 - [TODO release date here] Initial release
+  #29 - New option: show line numbers in editor.
   #28 - Improve handling of incorrect passwords.
   #26 - Add option to forget password for current tab.
   #22 - Add VetoException and explicit veto handling.

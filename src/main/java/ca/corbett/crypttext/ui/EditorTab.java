@@ -8,6 +8,7 @@ import ca.corbett.crypttext.crypt.CryptUtil;
 import ca.corbett.crypttext.crypt.DefaultCryptMetadata;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 import ca.corbett.crypttext.text.Text;
+import ca.corbett.crypttext.ui.actions.UIReloadAction;
 import ca.corbett.extras.MessageUtil;
 import ca.corbett.extras.ScrollUtil;
 
@@ -40,7 +41,7 @@ import java.util.logging.Logger;
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
-public class EditorTab extends JPanel {
+public class EditorTab extends JPanel implements UIReloadable {
 
     /**
      * Listeners can subscribe to receive caret position updates from this editor tab.
@@ -67,6 +68,8 @@ public class EditorTab extends JPanel {
     private final List<ContentChangeListener> contentChangeListeners;
     private final EditorTabPane ownerPane;
     private final JTextPane textPane;
+    private final JScrollPane scrollPane;
+    private final LineNumberGutter gutter;
     private final EditorTabHeader tabHeader;
     private String name;
     private Text text;
@@ -98,7 +101,9 @@ public class EditorTab extends JPanel {
         textPane.addCaretListener(this::firePositionChangedEvent);
         setLayout(new BorderLayout());
         JPanel wrapperPanel = new JPanel(new BorderLayout());
-        JScrollPane scrollPane = ScrollUtil.buildScrollPane(textPane);
+        scrollPane = ScrollUtil.buildScrollPane(textPane);
+        gutter = new LineNumberGutter(textPane);
+        scrollPane.setRowHeaderView(AppConfig.getInstance().isShowLineNumbers() ? gutter : null);
         wrapperPanel.add(scrollPane, BorderLayout.CENTER);
         add(wrapperPanel, BorderLayout.CENTER);
         this.text = text;
@@ -107,6 +112,7 @@ public class EditorTab extends JPanel {
         textPane.getDocument().addDocumentListener(new DocListener());
         isDirty = false;
         tabHeader = new EditorTabHeader(this, name);
+        UIReloadAction.getInstance().registerReloadable(this);
     }
 
     /**
@@ -193,6 +199,7 @@ public class EditorTab extends JPanel {
      */
     public void close() {
         ownerPane.closeTab(this);
+        UIReloadAction.getInstance().unregisterReloadable(this); // stop listening
     }
 
     /**
@@ -304,6 +311,15 @@ public class EditorTab extends JPanel {
         isDirty = true;
         tabHeader.updateLabel(name); // adds the visual dirty indicator
         tabHeader.resetIcon(); // swap icon colors for more visual indication of dirty state
+    }
+
+    /**
+     * Invoked when the user has changed application settings and the UI must reload.
+     * Our "show line numbers" option may have changed, so let's update accordingly.
+     */
+    @Override
+    public void reloadUI() {
+        scrollPane.setRowHeaderView(AppConfig.getInstance().isShowLineNumbers() ? gutter : null);
     }
 
     /**
