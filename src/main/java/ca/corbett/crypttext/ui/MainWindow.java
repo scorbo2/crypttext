@@ -441,7 +441,7 @@ public final class MainWindow extends JFrame implements UIReloadable {
      * If the "show full path in title bar" option is enabled, we'll show
      * the full path and name of the currently-shown file (if any).
      */
-    private void updateTitleBar() {
+    public void updateTitleBar() {
         // Start with our default title:
         setTitle(Version.FULL_NAME);
 

@@ -38,6 +38,9 @@ public class SaveAsAction extends EnhancedAction {
         // Now we can delegate to the tab itself:
         try {
             editorTab.saveAs();
+
+            // The file path and/or name has changed, so make sure our title bar is updated:
+            MainWindow.getInstance().updateTitleBar();
         }
         catch (IOException ioe) {
             getMessageUtil().error("Error saving file: " + ioe.getMessage(), ioe);
