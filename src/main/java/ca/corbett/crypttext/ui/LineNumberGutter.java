@@ -49,7 +49,7 @@ public class LineNumberGutter extends JPanel implements DocumentListener, CaretL
     }
 
     private int getLineCount() {
-        // Count visual lines (respects word wrap) by walking through the view hierarchy
+        // Count logical (document) lines, not word-wrapped visual lines
         Element root = textPane.getDocument().getDefaultRootElement();
         return root.getElementCount();
     }
