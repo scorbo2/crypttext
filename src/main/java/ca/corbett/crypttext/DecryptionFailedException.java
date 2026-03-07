@@ -15,7 +15,7 @@ package ca.corbett.crypttext;
  */
 public class DecryptionFailedException extends Exception {
 
-    public static final String MESSAGE = "Decryption failed. Cause: incorrect password, or corrupted ciphertext.";
+    public static final String MESSAGE = "Decryption failed: incorrect password or corrupted encrypted data.";
 
     public DecryptionFailedException() {
         super(MESSAGE);
