@@ -109,7 +109,7 @@ public class LineNumberGutter extends JPanel implements DocumentListener, CaretL
         repaint();
     }
 
-    public void changedUpdate(DocumentEvent ignnored) {
+    public void changedUpdate(DocumentEvent ignored) {
         revalidate();
         repaint();
     }
