@@ -26,6 +26,7 @@ import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.StringTokenizer;
@@ -43,6 +44,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
     private final static String PREFIX = "Status bar.Options.";
     private final static String FONT_PROP = PREFIX+"font";
     private final static String PATH_VISIBLE_PROP = PREFIX+"pathLabelVisible";
+    private final static String DATE_VISIBLE_PROP = PREFIX + "dateLabelVisible";
     private final static String DISK_SIZE_VISIBLE_PROP = PREFIX+"sizeOnDiskLabelVisible";
     private final static String MEM_SIZE_VISIBLE_PROP = PREFIX+"sizeInMemoryLabelVisible";
     private final static String CRYPT_VISIBLE_PROP = PREFIX+"cryptLabelVisible";
@@ -78,6 +80,9 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
 
         // Force an initial update to pick up our property values now:
         reloadUI();
+
+        // Force an initial update to pick up the current selected tab now:
+        stateChanged(new ChangeEvent(MainWindow.getInstance().getEditorTabPane()));
     }
 
     @Override
@@ -85,6 +90,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
         // Stop listening for events:
         MainWindow.getInstance().getEditorTabPane().removeChangeListener(this);
         UIReloadAction.getInstance().unregisterReloadable(this);
+        statusBar.setCurrentTab(null); // clear any listeners our status bar has, if any
     }
 
     @Override
@@ -92,6 +98,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
         List<AbstractProperty> props = new ArrayList<>();
         props.add(new FontProperty(FONT_PROP, "Font:", DEFAULT_FONT));
         props.add(new BooleanProperty(PATH_VISIBLE_PROP, "Show file path", true));
+        props.add(new BooleanProperty(DATE_VISIBLE_PROP, "Show last modified date", true));
         props.add(new BooleanProperty(DISK_SIZE_VISIBLE_PROP, "Show file size on disk", true));
         props.add(new BooleanProperty(MEM_SIZE_VISIBLE_PROP, "Show text statistics", true));
         props.add(new BooleanProperty(CRYPT_VISIBLE_PROP, "Show encryption metadata", true));
@@ -134,6 +141,9 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
         if (propsManager.getProperty(PATH_VISIBLE_PROP) instanceof BooleanProperty booleanProp) {
             statusBar.setPathLabelVisible(booleanProp.getValue());
         }
+        if (propsManager.getProperty(DATE_VISIBLE_PROP) instanceof BooleanProperty booleanProp1) {
+            statusBar.setDateLabelVisible(booleanProp1.getValue());
+        }
         if (propsManager.getProperty(DISK_SIZE_VISIBLE_PROP) instanceof BooleanProperty booleanProp2) {
             statusBar.setSizeOnDiskLabelVisible(booleanProp2.getValue());
         }
@@ -148,10 +158,13 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
     /**
      * Our actual status bar component.
      */
-    private static class StatusBarComponent extends JPanel implements EditorTab.PositionListener {
+    private static class StatusBarComponent extends JPanel
+            implements EditorTab.PositionListener, EditorTab.ContentChangeListener {
         private static final String DEFAULT_POS = "Ln 1, Col 1";
+        private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
 
         private final JLabel pathLabel;
+        private final JLabel dateLabel;
         private final JLabel sizeOnDiskLabel;
         private final JLabel sizeInMemoryLabel;
         private final JLabel cryptLabel;
@@ -177,10 +190,12 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
             wrapperPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 4));
             wrapperPanel.setBorder(BorderFactory.createLoweredBevelBorder());
             pathLabel = new JLabel();
+            dateLabel = new JLabel();
             sizeOnDiskLabel = new JLabel();
             sizeInMemoryLabel = new JLabel();
             cryptLabel = new JLabel();
             wrapperPanel.add(pathLabel);
+            wrapperPanel.add(dateLabel);
             wrapperPanel.add(sizeOnDiskLabel);
             wrapperPanel.add(sizeInMemoryLabel);
             wrapperPanel.add(cryptLabel);
@@ -200,6 +215,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
                 newFont = DEFAULT_FONT;
             }
             pathLabel.setFont(newFont);
+            dateLabel.setFont(newFont);
             sizeOnDiskLabel.setFont(newFont);
             sizeInMemoryLabel.setFont(newFont);
             cryptLabel.setFont(newFont);
@@ -215,6 +231,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
         public void setLabels(EditorTab tab) {
             if (tab == null) {
                 pathLabel.setText("(No file)");
+                dateLabel.setText("");
                 sizeOnDiskLabel.setText("");
                 sizeInMemoryLabel.setText("");
                 cryptLabel.setText("");
@@ -225,18 +242,16 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
                 if (sourceFile == null || !sourceFile.exists() || tab.isScratchFile()) {
                     pathLabel.setText("(No file)"); // this is a lie, but scratch files don't count as actual files
                     sizeOnDiskLabel.setText("");
+                    dateLabel.setText("");
                 }
                 else {
                     pathLabel.setText(sourceFile.getAbsolutePath());
                     String fileSize = FileSystemUtil.getPrintableSize(sourceFile.length());
                     sizeOnDiskLabel.setText(String.format("Disk: %s", fileSize));
+                    dateLabel.setText(format.format(sourceFile.lastModified()));
                 }
 
-                // Show character count and word count:
-                String text = tab.getCurrentText();
-                int characters = text.length();
-                int words = new StringTokenizer(text).countTokens();
-                sizeInMemoryLabel.setText(String.format("Chars/Words: %d/%d", characters, words));
+                updateTextStatsLabel(tab.getCurrentText());
 
                 // We'll show the encryption scheme name if the text was loaded from an
                 // encrypted file, or if it is currently encrypted in memory:
@@ -259,8 +274,21 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
             repaint();
         }
 
+        private void updateTextStatsLabel(String text) {
+            // Show character count and word count:
+            int characters = text.length();
+            int words = new StringTokenizer(text).countTokens();
+            sizeInMemoryLabel.setText(String.format("Chars/Words: %d/%d", characters, words));
+            sizeInMemoryLabel.repaint();
+        }
+
         public void setPathLabelVisible(boolean isVisible) {
             pathLabel.setVisible(isVisible);
+            refresh();
+        }
+
+        public void setDateLabelVisible(boolean isVisible) {
+            dateLabel.setVisible(isVisible);
             refresh();
         }
 
@@ -288,6 +316,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
             // We only ever want to listen to at most one EditorTab at a time:
             if (currentTab != null) {
                 currentTab.removePositionListener(this);
+                currentTab.removeContentChangeListener(this);
             }
 
             // It's possible that the tab pane might contain Components that are not EditorTabs.
@@ -295,6 +324,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
             if (c instanceof EditorTab editorTab) {
                 currentTab = editorTab;
                 currentTab.addPositionListener(this);
+                currentTab.addContentChangeListener(this);
             }
             else {
                 currentTab = null;
@@ -319,7 +349,16 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
         @Override
         public void onPositionUpdate(int row, int column) {
             caretPositionLabel.setText(String.format("Ln %d, Col %d", row, column));
-            refresh();
+            caretPositionLabel.repaint(); // Don't refresh() on every caret update (too expensive)
+        }
+
+        /**
+         * Invoked when the content of the currently selected EditorTab changes.
+         * We need to update the label showing word and character count when this happens.
+         */
+        @Override
+        public void onContentChange(String newContent) {
+            updateTextStatsLabel(newContent);
         }
     }
 }

@@ -50,10 +50,21 @@ public class EditorTab extends JPanel {
         void onPositionUpdate(int row, int column);
     }
 
+    /**
+     * Listeners can subscribe to receive notifications when the text content of this
+     * editor tab changes. This can be user modifications, programmatic changes via setCurrentText(),
+     * or the result of an encryption or decryption action.
+     */
+    @FunctionalInterface
+    public interface ContentChangeListener {
+        void onContentChange(String newContent);
+    }
+
     private static final Logger log = Logger.getLogger(EditorTab.class.getName());
     private MessageUtil messageUtil;
 
     private final List<PositionListener> positionListeners;
+    private final List<ContentChangeListener> contentChangeListeners;
     private final EditorTabPane ownerPane;
     private final JTextPane textPane;
     private final EditorTabHeader tabHeader;
@@ -80,6 +91,7 @@ public class EditorTab extends JPanel {
             throw new IllegalArgumentException("Given Text instance cannot be null");
         }
         this.positionListeners = new ArrayList<>();
+        this.contentChangeListeners = new ArrayList<>();
         this.ownerPane = ownerPane;
         this.name = name;
         textPane = new JTextPane();
@@ -369,6 +381,40 @@ public class EditorTab extends JPanel {
         }
     }
 
+    public void addContentChangeListener(ContentChangeListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener cannot be null");
+        }
+        contentChangeListeners.add(listener);
+    }
+
+    public void removeContentChangeListener(ContentChangeListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener cannot be null");
+        }
+        contentChangeListeners.remove(listener);
+    }
+
+    private void fireContentChangedEvent() {
+        // If no one is listening, don't bother:
+        if (contentChangeListeners.isEmpty()) {
+            return;
+        }
+
+        // Notify listeners:
+        try {
+            final String newContents = getCurrentText();
+            // Iterate over a copy of the list to avoid ConcurrentModificationExceptions:
+            for (ContentChangeListener listener : new ArrayList<>(contentChangeListeners)) {
+                listener.onContentChange(newContents);
+            }
+        }
+        catch (Exception e) {
+            // If a listener throws a runtime exception, don't let it interfere with this EditorTab:
+            log.warning("Failed to fire content changed event: " + e.getMessage());
+        }
+    }
+
     /**
      * A very simple DocumentListener that will mark this editor tab as dirty
      * whenever any change is made.
@@ -377,16 +423,19 @@ public class EditorTab extends JPanel {
         @Override
         public void insertUpdate(DocumentEvent e) {
             markDirty();
+            fireContentChangedEvent();
         }
 
         @Override
         public void removeUpdate(DocumentEvent e) {
             markDirty();
+            fireContentChangedEvent();
         }
 
         @Override
         public void changedUpdate(DocumentEvent e) {
             markDirty();
+            fireContentChangedEvent();
         }
     }
 
