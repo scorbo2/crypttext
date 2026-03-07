@@ -66,7 +66,7 @@ public class SaveUnencryptedAction extends EnhancedAction {
         }
         catch (Exception ex) {
             // For all other exceptions, log the whole stack trace:
-            getMessageUtil().error("Error decrypting text: " + ex.getMessage(), ex);
+            getMessageUtil().error("Error saving file: " + ex.getMessage(), ex);
         }
     }
 
