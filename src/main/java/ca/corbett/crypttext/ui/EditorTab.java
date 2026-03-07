@@ -16,10 +16,13 @@ import javax.swing.JFileChooser;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
+import javax.swing.event.CaretEvent;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Logger;
 
 /**
@@ -39,9 +42,29 @@ import java.util.logging.Logger;
  */
 public class EditorTab extends JPanel {
 
+    /**
+     * Listeners can subscribe to receive caret position updates from this editor tab.
+     */
+    @FunctionalInterface
+    public interface PositionListener {
+        void onPositionUpdate(int row, int column);
+    }
+
+    /**
+     * Listeners can subscribe to receive notifications when the text content of this
+     * editor tab changes. This can be user modifications, programmatic changes via setCurrentText(),
+     * or the result of an encryption or decryption action.
+     */
+    @FunctionalInterface
+    public interface ContentChangeListener {
+        void onContentChange(String newContent);
+    }
+
     private static final Logger log = Logger.getLogger(EditorTab.class.getName());
     private MessageUtil messageUtil;
 
+    private final List<PositionListener> positionListeners;
+    private final List<ContentChangeListener> contentChangeListeners;
     private final EditorTabPane ownerPane;
     private final JTextPane textPane;
     private final EditorTabHeader tabHeader;
@@ -67,9 +90,12 @@ public class EditorTab extends JPanel {
         if (text == null) {
             throw new IllegalArgumentException("Given Text instance cannot be null");
         }
+        this.positionListeners = new ArrayList<>();
+        this.contentChangeListeners = new ArrayList<>();
         this.ownerPane = ownerPane;
         this.name = name;
         textPane = new JTextPane();
+        textPane.addCaretListener(this::firePositionChangedEvent);
         setLayout(new BorderLayout());
         JPanel wrapperPanel = new JPanel(new BorderLayout());
         JScrollPane scrollPane = ScrollUtil.buildScrollPane(textPane);
@@ -106,6 +132,33 @@ public class EditorTab extends JPanel {
         catch (IOException ignored) {
         }
         return false;
+    }
+
+    /**
+     * Returns whether the CURRENT text contents of this tab are encrypted.
+     * The text may be encrypted on disk, but this method will return false if the
+     * user has decrypted the text in memory. To learn whether the text
+     * was loaded from an encrypted file, you can use getCryptMetadata().wasEncryptedWhenLoaded().
+     */
+    public boolean isEncrypted() {
+        return CryptUtil.isCryptTextWrapped(getCurrentText());
+    }
+
+    /**
+     * Returns the current (one-based) row number of the caret in this editor tab.
+     */
+    public int getCaretRow() {
+        int pos = textPane.getCaretPosition();
+        return textPane.getDocument().getDefaultRootElement().getElementIndex(pos) + 1;
+    }
+
+    /**
+     * Returns the current (one-based) column number of the caret in this editor tab.
+     */
+    public int getCaretColumn() {
+        int pos = textPane.getCaretPosition();
+        int row = textPane.getDocument().getDefaultRootElement().getElementIndex(pos) + 1;
+        return pos - textPane.getDocument().getDefaultRootElement().getElement(row - 1).getStartOffset() + 1;
     }
 
     /**
@@ -290,6 +343,78 @@ public class EditorTab extends JPanel {
 
     }
 
+    public void addPositionListener(PositionListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener cannot be null");
+        }
+        positionListeners.add(listener);
+    }
+
+    public void removePositionListener(PositionListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener cannot be null");
+        }
+        positionListeners.remove(listener);
+    }
+
+    private void firePositionChangedEvent(CaretEvent caretEvent) {
+        // If no one is listening, don't bother:
+        if (positionListeners.isEmpty()) {
+            return;
+        }
+
+        // Translate CaretEvent's "dot" into row and column numbers:
+        int pos = caretEvent.getDot();
+        int row = textPane.getDocument().getDefaultRootElement().getElementIndex(pos) + 1;
+        int col = pos - textPane.getDocument().getDefaultRootElement().getElement(row - 1).getStartOffset() + 1;
+
+        // Notify listeners:
+        try {
+            // Iterate over a copy of the list to avoid ConcurrentModificationExceptions:
+            for (PositionListener listener : new ArrayList<>(positionListeners)) {
+                listener.onPositionUpdate(row, col);
+            }
+        }
+        catch (Exception e) {
+            // If a listener throws a runtime exception, don't let it interfere with this EditorTab:
+            log.warning("Failed to fire position changed event: " + e.getMessage());
+        }
+    }
+
+    public void addContentChangeListener(ContentChangeListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener cannot be null");
+        }
+        contentChangeListeners.add(listener);
+    }
+
+    public void removeContentChangeListener(ContentChangeListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener cannot be null");
+        }
+        contentChangeListeners.remove(listener);
+    }
+
+    private void fireContentChangedEvent() {
+        // If no one is listening, don't bother:
+        if (contentChangeListeners.isEmpty()) {
+            return;
+        }
+
+        // Notify listeners:
+        try {
+            final String newContents = getCurrentText();
+            // Iterate over a copy of the list to avoid ConcurrentModificationExceptions:
+            for (ContentChangeListener listener : new ArrayList<>(contentChangeListeners)) {
+                listener.onContentChange(newContents);
+            }
+        }
+        catch (Exception e) {
+            // If a listener throws a runtime exception, don't let it interfere with this EditorTab:
+            log.warning("Failed to fire content changed event: " + e.getMessage());
+        }
+    }
+
     /**
      * A very simple DocumentListener that will mark this editor tab as dirty
      * whenever any change is made.
@@ -298,16 +423,19 @@ public class EditorTab extends JPanel {
         @Override
         public void insertUpdate(DocumentEvent e) {
             markDirty();
+            fireContentChangedEvent();
         }
 
         @Override
         public void removeUpdate(DocumentEvent e) {
             markDirty();
+            fireContentChangedEvent();
         }
 
         @Override
         public void changedUpdate(DocumentEvent e) {
             markDirty();
+            fireContentChangedEvent();
         }
     }
 

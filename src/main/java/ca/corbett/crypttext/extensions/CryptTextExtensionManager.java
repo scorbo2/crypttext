@@ -2,6 +2,7 @@ package ca.corbett.crypttext.extensions;
 
 import ca.corbett.crypttext.Version;
 import ca.corbett.crypttext.crypt.CryptMetadata;
+import ca.corbett.crypttext.extensions.builtin.StatusBarExtension;
 import ca.corbett.crypttext.extensions.builtin.TestExtension;
 import ca.corbett.crypttext.ui.TabStateManager;
 import ca.corbett.extensions.ExtensionManager;
@@ -62,6 +63,7 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
      */
     public void loadAll() {
         // Load our built-in extensions first:
+        addExtension(new StatusBarExtension(), true);
 
         // TestExtension is a bit special... we won't show it at all unless you've gone
         // out of your way to enable it. This is not intended for general users:

@@ -5,6 +5,7 @@ Version 1.0 - [TODO release date here] Initial release
   #22 - Add VetoException and explicit veto handling.
   #20 - TestExtension: add auto-veto options
   #10 - Add built-in (but hidden) TestExtension
+  #13 - Add built-in Status Bar extension
   #9 - Implement encryption/decryption.
   #8 - Add option to reload last-opened files on startup.
   #7 - Add support for command-line arguments
