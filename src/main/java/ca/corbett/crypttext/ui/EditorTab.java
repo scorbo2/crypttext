@@ -358,12 +358,13 @@ public class EditorTab extends JPanel {
 
         // Notify listeners:
         try {
-            for (PositionListener listener : positionListeners) {
+            // Iterate over a copy of the list to avoid ConcurrentModificationExceptions:
+            for (PositionListener listener : new ArrayList<>(positionListeners)) {
                 listener.onPositionUpdate(row, col);
             }
         }
         catch (Exception e) {
-            // If a listener throws an exception, don't let it interfere with this EditorTab:
+            // If a listener throws a runtime exception, don't let it interfere with this EditorTab:
             log.warning("Failed to fire position changed event: " + e.getMessage());
         }
     }

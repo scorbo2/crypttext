@@ -164,6 +164,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
          */
         public StatusBarComponent() {
             setLayout(new BorderLayout());
+            setName("Status bar"); // In case we are added to a JTabbedPane
 
             // Caret position info on the right:
             JPanel wrapperPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 4));
