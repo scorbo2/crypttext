@@ -198,8 +198,10 @@ public class EditorTab extends JPanel implements UIReloadable {
      * or if it is a scratch file with non-empty contents.
      */
     public void close() {
-        ownerPane.closeTab(this);
-        UIReloadAction.getInstance().unregisterReloadable(this); // stop listening
+        if (ownerPane.closeTab(this)) {
+            // Our request to close the tab was not canceled or vetoed, so we are actually closing:
+            UIReloadAction.getInstance().unregisterReloadable(this); // stop listening
+        }
     }
 
     /**
