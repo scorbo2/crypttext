@@ -15,7 +15,7 @@ import java.util.List;
  * <p>
  * <b>Extensions can supply menu items!</b> - extensions will be queried for top-level menus,
  * if they supply any, and extensions can also optionally supply extra menu items for the File,
- * Edit, and Help menus.
+ * Edit, Crypt, and Help menus.
  * </p>
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
@@ -25,6 +25,7 @@ public class MenuManager {
     private final JMenuBar menuBar;
     private JMenu fileMenu;
     private JMenu editMenu;
+    private JMenu cryptMenu;
     private JMenu helpMenu;
 
     /**
@@ -49,6 +50,7 @@ public class MenuManager {
         rebuildMenuBar();
         rebuildFileMenu();
         rebuildEditMenu();
+        rebuildCryptMenu();
         rebuildHelpMenu();
     }
 
@@ -63,7 +65,11 @@ public class MenuManager {
         editMenu.setMnemonic(KeyEvent.VK_E);
         menuBar.add(editMenu);
 
-        // Any extension-provided top-level menu can go in between Edit and Help:
+        cryptMenu = new JMenu("Crypt");
+        cryptMenu.setMnemonic(KeyEvent.VK_C);
+        menuBar.add(cryptMenu);
+
+        // Any extension-provided top-level menu can go in between Crypt and Help:
         List<JMenu> extensionMenus = CryptTextExtensionManager.getInstance().getTopLevelMenus();
         if (!extensionMenus.isEmpty()) {
             for (JMenu extensionMenu : extensionMenus) {
@@ -83,7 +89,6 @@ public class MenuManager {
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getOpenFileAction()));
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getFileSaveAction()));
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getFileSaveAsAction()));
-        fileMenu.add(new JMenuItem(AppConfig.getInstance().getCryptAction()));
 
         // Add any items to this list from our extensions, if any:
         List<JMenuItem> items = CryptTextExtensionManager.getInstance().getMenuItems("File");
@@ -113,6 +118,23 @@ public class MenuManager {
 
         editMenu.add(new JMenuItem(AppConfig.getInstance().getPropertiesAction()));
         editMenu.add(new JMenuItem(AppConfig.getInstance().getExtensionManagerAction()));
+    }
+
+    private void rebuildCryptMenu() {
+        cryptMenu.removeAll();
+
+        cryptMenu.add(new JMenuItem(AppConfig.getInstance().getCryptAction()));
+        cryptMenu.add(new JMenuItem(AppConfig.getInstance().getForgetPasswordAction()));
+
+        // Add any items to this list from our extensions, if any:
+        List<JMenuItem> items = CryptTextExtensionManager.getInstance().getMenuItems("Crypt");
+        if (!items.isEmpty()) {
+            fileMenu.addSeparator();
+            for (JMenuItem item : items) {
+                cryptMenu.add(item);
+            }
+        }
+
     }
 
     private void rebuildHelpMenu() {

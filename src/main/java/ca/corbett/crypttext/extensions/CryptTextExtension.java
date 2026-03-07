@@ -29,7 +29,7 @@ public abstract class CryptTextExtension extends AppExtension {
     /**
      * Invoked when the application wants to know if the extension has its own top-level
      * menu to add to the MainWindow's main menu. These will be inserted in between
-     * the "Edit" and "Help" menus.
+     * the "Crypt" and "Help" menus.
      *
      * @return an optional list of JMenu objects for the main menu, or null for none.
      */
@@ -42,7 +42,7 @@ public abstract class CryptTextExtension extends AppExtension {
      * to know if the extension has anything to add to one of the built-in top-level
      * menus.
      *
-     * @param topLevelMenu The name of the top-level menu being built: File, Edit, or Help.
+     * @param topLevelMenu The name of the top-level menu being built: File, Edit, Crypt, or Help.
      * @return an optional list of menu items to insert into the given menu, or null for nothing.
      */
     public List<JMenuItem> getMenuItems(String topLevelMenu) {

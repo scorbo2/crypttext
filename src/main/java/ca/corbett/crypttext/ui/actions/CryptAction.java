@@ -38,8 +38,10 @@ public class CryptAction extends EnhancedAction {
     public void actionPerformed(ActionEvent e) {
         // It's weird that our editor tab pane allows tabs that aren't EditorTab instances.
         // Let's just filter them out. Might add code later to enforce EditorTabs only.
+        // This also covers the case where current tab is null.
         Component c = MainWindow.getInstance().getEditorTabPane().getCurrentTab();
         if (!(c instanceof EditorTab editorTab)) {
+            getMessageUtil().info("No text-based tab is selected.");
             return;
         }
 
@@ -102,6 +104,9 @@ public class CryptAction extends EnhancedAction {
             // Decryption failed - probably wrong password or corrupted text.
             // Just show an error message and leave the text as-is.
             getMessageUtil().error("Decryption failed: " + ex.getMessage(), ex);
+
+            // Immediately forget this password! It's almost certainly wrong.
+            cryptMetadata.setPassword(null);
         }
     }
 
