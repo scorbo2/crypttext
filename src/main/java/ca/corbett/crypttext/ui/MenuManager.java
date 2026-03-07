@@ -2,6 +2,7 @@ package ca.corbett.crypttext.ui;
 
 import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
+import ca.corbett.crypttext.ui.actions.ForgetPasswordAction;
 
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -25,6 +26,7 @@ public class MenuManager {
     private final JMenuBar menuBar;
     private JMenu fileMenu;
     private JMenu editMenu;
+    private JMenu cryptMenu;
     private JMenu helpMenu;
 
     /**
@@ -49,6 +51,7 @@ public class MenuManager {
         rebuildMenuBar();
         rebuildFileMenu();
         rebuildEditMenu();
+        rebuildCryptMenu();
         rebuildHelpMenu();
     }
 
@@ -63,7 +66,11 @@ public class MenuManager {
         editMenu.setMnemonic(KeyEvent.VK_E);
         menuBar.add(editMenu);
 
-        // Any extension-provided top-level menu can go in between Edit and Help:
+        cryptMenu = new JMenu("Crypt");
+        cryptMenu.setMnemonic(KeyEvent.VK_C);
+        menuBar.add(cryptMenu);
+
+        // Any extension-provided top-level menu can go in between Crypt and Help:
         List<JMenu> extensionMenus = CryptTextExtensionManager.getInstance().getTopLevelMenus();
         if (!extensionMenus.isEmpty()) {
             for (JMenu extensionMenu : extensionMenus) {
@@ -83,7 +90,6 @@ public class MenuManager {
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getOpenFileAction()));
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getFileSaveAction()));
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getFileSaveAsAction()));
-        fileMenu.add(new JMenuItem(AppConfig.getInstance().getCryptAction()));
 
         // Add any items to this list from our extensions, if any:
         List<JMenuItem> items = CryptTextExtensionManager.getInstance().getMenuItems("File");
@@ -113,6 +119,13 @@ public class MenuManager {
 
         editMenu.add(new JMenuItem(AppConfig.getInstance().getPropertiesAction()));
         editMenu.add(new JMenuItem(AppConfig.getInstance().getExtensionManagerAction()));
+    }
+
+    private void rebuildCryptMenu() {
+        cryptMenu.removeAll();
+
+        cryptMenu.add(new JMenuItem(AppConfig.getInstance().getCryptAction()));
+        cryptMenu.add(new JMenuItem(new ForgetPasswordAction()));
     }
 
     private void rebuildHelpMenu() {
