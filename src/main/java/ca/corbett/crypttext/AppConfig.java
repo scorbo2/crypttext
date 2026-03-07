@@ -82,6 +82,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private BooleanProperty closeLastTabExitsProp;
     private DirectoryProperty lastBrowseDirProp;
     private BooleanProperty restoreTabsOnStartupProp;
+    private BooleanProperty showLineNumbersProp;
 
     // These will be used in the menu bar and with KeyStrokeManager:
     // (they could also be added to buttons or popup menus as needed)
@@ -246,6 +247,13 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     }
 
     /**
+     * Reports whether "show line numbers in editor" is enabled.
+     */
+    public boolean isShowLineNumbers() {
+        return showLineNumbersProp.getValue();
+    }
+
+    /**
      * This is where you can define the configuration properties for your application.
      * These properties will be displayed in the PropertiesDialog, and persisted
      * to the properties file automatically.
@@ -292,6 +300,11 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
                                               "Tab Icon Size (px)",
                                               16, 8, 64, 2);
         props.add(tabIconSizeProp);
+
+        showLineNumbersProp = new BooleanProperty("UI.Editor tabs.showLineNumbers",
+                                                  "Show line numbers in editor",
+                                                  true);
+        props.add(showLineNumbersProp);
 
         closeLastTabExitsProp = new BooleanProperty("UI.Editor tabs.closeLastTabExits",
                                                     "Exit application when the last editor tab is closed",

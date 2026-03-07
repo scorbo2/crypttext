@@ -175,8 +175,9 @@ public class EditorTabPane extends JTabbedPane {
      * Invoked from EditorTab.close() to remove the given tab from this tab pane.
      *
      * @param editorTab the tab to close. must not be null.
+     * @return whether the given tab was actually closed (action can be canceled or vetoed)
      */
-    void closeTab(EditorTab editorTab) {
+    boolean closeTab(EditorTab editorTab) {
         if (editorTab == null) {
             throw new IllegalArgumentException("Given EditorTab cannot be null");
         }
@@ -186,7 +187,7 @@ public class EditorTabPane extends JTabbedPane {
             int result = getMessageUtil().askYesNoCancel("Unsaved changes",
                                                          "This tab has unsaved changes. Do you want to save before closing?");
             if (result == MessageUtil.CANCEL) {
-                return; // tab stays open because user canceled.
+                return false; // tab stays open because user canceled.
             }
             if (result == MessageUtil.YES) {
                 try {
@@ -194,12 +195,12 @@ public class EditorTabPane extends JTabbedPane {
                 }
                 catch (VetoException ignored) {
                     // An extension vetoed the save! Just skip it - TextManager has already logged the veto.
-                    return; // abort the close action if we couldn't save
+                    return false; // abort the close action if we couldn't save
                 }
                 catch (IOException ioe) {
                     getMessageUtil().error("Error saving file",
                                            "An error occurred while saving the file:\n" + ioe.getMessage());
-                    return; // abort the close action if we couldn't save
+                    return false; // abort the close action if we couldn't save
                 }
             }
         }
@@ -225,6 +226,9 @@ public class EditorTabPane extends JTabbedPane {
                 MainWindow.getInstance().dispose();
             }
         }
+
+        // Tab is closed!
+        return true;
     }
 
     /**
