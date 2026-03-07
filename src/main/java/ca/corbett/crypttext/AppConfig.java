@@ -77,6 +77,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
 
     private LookAndFeelProperty lookAndFeelProp;
     private BooleanProperty enableSingleInstance;
+    private BooleanProperty showFullPathInTitleProp;
     private BooleanProperty enableTabLockIconsProp;
     private IntegerProperty tabIconSizeProp;
     private BooleanProperty closeLastTabExitsProp;
@@ -221,6 +222,14 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     }
 
     /**
+     * Reports whether the "show full path in title bar" option is enabled.
+     * If false, you just get application name + version.
+     */
+    public boolean isShowFullPathInTitleEnabled() {
+        return showFullPathInTitleProp.getValue();
+    }
+
+    /**
      * Gets the last directory that was browsed to in a file chooser.
      * This can be used to initialize the next file chooser, for
      * a more consistent user experience.
@@ -274,6 +283,11 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
                                                    "Allow only a single instance of the application",
                                                    true);
         props.add(enableSingleInstance);
+
+        showFullPathInTitleProp = new BooleanProperty("UI.General.showFullPathInTitle",
+                                                      "Show full file path in title bar",
+                                                      true);
+        props.add(showFullPathInTitleProp);
 
         // Let's create all our actions:
         newTabAction = new NewTabAction();
