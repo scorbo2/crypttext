@@ -24,6 +24,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -61,6 +62,7 @@ public final class MainWindow extends JFrame implements UIReloadable {
         isSingleInstanceModeEnabled = AppConfig.getInstance().isSingleInstanceEnabled();
         configureLogConsole();
         editorTabPane = new EditorTabPane();
+        editorTabPane.addChangeListener(e -> updateTitleBar());
         setLayout(new BorderLayout());
 
         // We will eventually support command-line args for opening specific files on launch.
@@ -242,6 +244,9 @@ public final class MainWindow extends JFrame implements UIReloadable {
 
         // Make sure we register a TabStateManager, if any extension supplies one:
         tabStateManager = CryptTextExtensionManager.getInstance().getTabStateManager();
+
+        // Update our title bar in case the user toggled the option to show full paths there:
+        updateTitleBar();
 
         // Our list of extra components around the main tab pane may have changed,
         // if extensions were installed/uninstalled/enabled/disabled, so let's
@@ -429,6 +434,38 @@ public final class MainWindow extends JFrame implements UIReloadable {
 
         // Delegate to our utility class:
         tabStateManager.restoreTabState(editorTabPane);
+    }
+
+    /**
+     * Intelligently updates the main window title bar based on currently-selected file, if anyu.
+     * If the "show full path in title bar" option is enabled, we'll show
+     * the full path and name of the currently-shown file.
+     * For scratch files (files created in-memory and not yet saved), we'll just show
+     * the tab name instead (example: "Untitled 1").
+     */
+    public void updateTitleBar() {
+        // Start with our default title:
+        setTitle(Version.FULL_NAME);
+
+        // If the option is disabled, we're done:
+        if (!AppConfig.getInstance().isShowFullPathInTitleEnabled()) {
+            return;
+        }
+
+        // Get the current tab (it might not be an EditorTab! - ignore if not):
+        Component c = editorTabPane.getSelectedComponent();
+        if (c instanceof EditorTab editorTab) { // this also filters out null (no tab open)
+
+            // for scratch files or null files, just show the tab name (e.g. "Untitled 1")
+            if (editorTab.isScratchFile() || editorTab.getTextInstance().getSourceFile() == null) {
+                setTitle(Version.FULL_NAME + " - " + editorTab.getTabName());
+            }
+
+            // Otherwise, use the full path:
+            else {
+                setTitle(Version.FULL_NAME + " - " + editorTab.getTextInstance().getSourceFile().getAbsolutePath());
+            }
+        }
     }
 
     /**

@@ -41,6 +41,9 @@ public class SaveAction extends EnhancedAction {
         // Now we can delegate to the tab itself:
         try {
             editorTab.save();
+
+            // if it was a scratch file, it now has a proper name that we can show in the title bar:
+            MainWindow.getInstance().updateTitleBar();
         }
         catch (VetoException ignored) {
             // An extension vetoed the save!
