@@ -26,21 +26,13 @@ class RecentFilesManagerTest {
     @TempDir
     Path tempDir;
 
+    /** Points to the "recent_files" file inside the test's temporary directory. */
+    private File mrfFile;
+
     @BeforeEach
     void setUp() {
         manager = new RecentFilesManager();
-        // Remove any leftover persistence file from a previous test run
-        if (RecentFilesManager.MRF_FILE.exists()) {
-            RecentFilesManager.MRF_FILE.delete();
-        }
-    }
-
-    @AfterEach
-    void tearDown() {
-        // Clean up persistence file after each test
-        if (RecentFilesManager.MRF_FILE.exists()) {
-            RecentFilesManager.MRF_FILE.delete();
-        }
+        mrfFile = new File(tempDir.toFile(), "recent_files");
     }
 
     // ==================== Constructor Tests ====================
@@ -338,10 +330,10 @@ class RecentFilesManagerTest {
 
     @Test
     void load_whenMrfFileDoesNotExist_shouldResultInEmptyList() {
-        // GIVEN the MRF_FILE does not exist (ensured in setUp)
+        // GIVEN no "recent_files" file in tempDir
 
-        // WHEN we load:
-        manager.load();
+        // WHEN we load using tempDir:
+        manager.load(tempDir.toFile());
 
         // THEN the list should be empty:
         assertTrue(manager.isEmpty());
@@ -349,14 +341,13 @@ class RecentFilesManagerTest {
 
     @Test
     void load_withLimitZero_shouldResultInEmptyList() throws IOException {
-        // GIVEN a limit of 0 and a file with entries:
+        // GIVEN a limit of 0 and a persistence file with entries in tempDir:
         manager.setListLimit(0);
         File realFile = Files.createTempFile(tempDir, "real", ".txt").toFile();
-        Files.write(RecentFilesManager.MRF_FILE.toPath(),
-                realFile.getAbsolutePath().getBytes());
+        Files.write(mrfFile.toPath(), realFile.getAbsolutePath().getBytes());
 
-        // WHEN we load:
-        manager.load();
+        // WHEN we load using tempDir:
+        manager.load(tempDir.toFile());
 
         // THEN the list should be empty:
         assertTrue(manager.isEmpty());
@@ -369,10 +360,10 @@ class RecentFilesManagerTest {
         File realFile2 = Files.createTempFile(tempDir, "real2", ".txt").toFile();
         String content = realFile1.getAbsolutePath() + System.lineSeparator()
                 + realFile2.getAbsolutePath();
-        Files.write(RecentFilesManager.MRF_FILE.toPath(), content.getBytes());
+        Files.write(mrfFile.toPath(), content.getBytes());
 
-        // WHEN we load:
-        manager.load();
+        // WHEN we load using tempDir:
+        manager.load(tempDir.toFile());
 
         // THEN both files should be in the list:
         List<File> recentFiles = manager.getRecentFiles();
@@ -388,10 +379,10 @@ class RecentFilesManagerTest {
         File nonExistentFile = new File(tempDir.toFile(), "ghost.txt");
         String content = nonExistentFile.getAbsolutePath() + System.lineSeparator()
                 + realFile.getAbsolutePath();
-        Files.write(RecentFilesManager.MRF_FILE.toPath(), content.getBytes());
+        Files.write(mrfFile.toPath(), content.getBytes());
 
-        // WHEN we load:
-        manager.load();
+        // WHEN we load using tempDir:
+        manager.load(tempDir.toFile());
 
         // THEN only the real file should be in the list:
         List<File> recentFiles = manager.getRecentFiles();
@@ -412,10 +403,10 @@ class RecentFilesManagerTest {
                 + realFile2.getAbsolutePath() + System.lineSeparator()
                 + realFile3.getAbsolutePath() + System.lineSeparator()
                 + realFile4.getAbsolutePath();
-        Files.write(RecentFilesManager.MRF_FILE.toPath(), content.getBytes());
+        Files.write(mrfFile.toPath(), content.getBytes());
 
-        // WHEN we load:
-        manager.load();
+        // WHEN we load using tempDir:
+        manager.load(tempDir.toFile());
 
         // THEN only the first 2 files (up to limit) should be in the list:
         List<File> recentFiles = manager.getRecentFiles();
@@ -434,10 +425,10 @@ class RecentFilesManagerTest {
         assertEquals(1, manager.size());
 
         File realFile = Files.createTempFile(tempDir, "real", ".txt").toFile();
-        Files.write(RecentFilesManager.MRF_FILE.toPath(), realFile.getAbsolutePath().getBytes());
+        Files.write(mrfFile.toPath(), realFile.getAbsolutePath().getBytes());
 
-        // WHEN we load:
-        manager.load();
+        // WHEN we load using tempDir:
+        manager.load(tempDir.toFile());
 
         // THEN the pre-existing in-memory item should be gone, and only the loaded file present:
         List<File> recentFiles = manager.getRecentFiles();
@@ -453,10 +444,10 @@ class RecentFilesManagerTest {
         String content = System.lineSeparator()
                 + realFile.getAbsolutePath() + System.lineSeparator()
                 + System.lineSeparator();
-        Files.write(RecentFilesManager.MRF_FILE.toPath(), content.getBytes());
+        Files.write(mrfFile.toPath(), content.getBytes());
 
-        // WHEN we load:
-        manager.load();
+        // WHEN we load using tempDir:
+        manager.load(tempDir.toFile());
 
         // THEN only the real file should be in the list (blank lines ignored):
         List<File> recentFiles = manager.getRecentFiles();
@@ -470,12 +461,12 @@ class RecentFilesManagerTest {
     void save_withEmptyList_shouldCreateEmptyPersistenceFile() throws IOException {
         // GIVEN an empty manager
 
-        // WHEN we save:
-        manager.save();
+        // WHEN we save using tempDir:
+        manager.save(tempDir.toFile());
 
         // THEN the persistence file should exist but be empty (or contain no meaningful entries):
-        assertTrue(RecentFilesManager.MRF_FILE.exists());
-        String content = new String(Files.readAllBytes(RecentFilesManager.MRF_FILE.toPath())).trim();
+        assertTrue(mrfFile.exists());
+        String content = new String(Files.readAllBytes(mrfFile.toPath())).trim();
         assertTrue(content.isEmpty());
     }
 
@@ -487,11 +478,11 @@ class RecentFilesManagerTest {
         manager.add(file1);
         manager.add(file2);
 
-        // WHEN we save:
-        manager.save();
+        // WHEN we save using tempDir:
+        manager.save(tempDir.toFile());
 
         // THEN the persistence file should contain both file paths:
-        String content = new String(Files.readAllBytes(RecentFilesManager.MRF_FILE.toPath()));
+        String content = new String(Files.readAllBytes(mrfFile.toPath()));
         assertTrue(content.contains(file1.getAbsolutePath()));
         assertTrue(content.contains(file2.getAbsolutePath()));
     }
@@ -506,10 +497,10 @@ class RecentFilesManagerTest {
         manager.add(realFile1);
         manager.add(realFile2);
 
-        // WHEN we save and then load in a new manager:
-        manager.save();
+        // WHEN we save and then load in a new manager (both using tempDir):
+        manager.save(tempDir.toFile());
         RecentFilesManager manager2 = new RecentFilesManager();
-        manager2.load();
+        manager2.load(tempDir.toFile());
 
         // THEN the new manager should have the same files:
         List<File> recentFiles = manager2.getRecentFiles();
@@ -532,8 +523,8 @@ class RecentFilesManagerTest {
                 + realFile2.getAbsolutePath() + System.lineSeparator()
                 + realFile3.getAbsolutePath() + System.lineSeparator()
                 + realFile4.getAbsolutePath();
-        Files.write(RecentFilesManager.MRF_FILE.toPath(), content.getBytes());
-        manager.load();
+        Files.write(mrfFile.toPath(), content.getBytes());
+        manager.load(tempDir.toFile());
         assertEquals(4, manager.size());
 
         // WHEN we reduce the limit to 2 after loading:
@@ -597,8 +588,8 @@ class RecentFilesManagerTest {
         File realFile2 = Files.createTempFile(tempDir, "real2", ".txt").toFile();
         String content = realFile1.getAbsolutePath() + System.lineSeparator()
                 + realFile2.getAbsolutePath();
-        Files.write(RecentFilesManager.MRF_FILE.toPath(), content.getBytes());
-        manager.load();
+        Files.write(mrfFile.toPath(), content.getBytes());
+        manager.load(tempDir.toFile());
         assertEquals(2, manager.size());
 
         // WHEN we set limit to 0:

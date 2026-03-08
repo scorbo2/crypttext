@@ -120,20 +120,30 @@ public class RecentFilesManager {
     }
 
     /**
-     * Loads the list from persistence.
+     * Loads the list from persistence in the default settings directory.
      * All IOExceptions are simply logged and swallowed, and the list will be empty.
      */
     public void load() {
+        load(Version.SETTINGS_DIR);
+    }
+
+    /**
+     * Loads the list from persistence in the given settings directory.
+     * The persistence file is always named "recent_files" within that directory.
+     * All IOExceptions are simply logged and swallowed, and the list will be empty.
+     */
+    public void load(File settingsDir) {
+        File mrfFile = new File(settingsDir, "recent_files");
         recentFiles.clear();
-        if (!MRF_FILE.exists() || listLimit == 0) {
+        if (!mrfFile.exists() || listLimit == 0) {
             return;
         }
-        if (!MRF_FILE.isFile() || !MRF_FILE.canRead()) {
-            logger.warning("Recent files list file is not a readable file: " + MRF_FILE.getAbsolutePath());
+        if (!mrfFile.isFile() || !mrfFile.canRead()) {
+            logger.warning("Recent files list file is not a readable file: " + mrfFile.getAbsolutePath());
             return;
         }
         try {
-            List<String> lines = FileSystemUtil.readFileLines(MRF_FILE);
+            List<String> lines = FileSystemUtil.readFileLines(mrfFile);
             for (String line : lines) {
                 if (line.trim().isEmpty()) {
                     continue;
@@ -159,10 +169,22 @@ public class RecentFilesManager {
     }
 
     /**
-     * Persists our list to disk. Any previous persistence file is overwritten.
+     * Persists our list to disk in the default settings directory.
+     * Any previous persistence file is overwritten.
      * All IOExceptions are simply logged and swallowed.
      */
     public void save() {
+        save(Version.SETTINGS_DIR);
+    }
+
+    /**
+     * Persists our list to disk in the given settings directory.
+     * The persistence file is always named "recent_files" within that directory.
+     * Any previous persistence file is overwritten.
+     * All IOExceptions are simply logged and swallowed.
+     */
+    public void save(File settingsDir) {
+        File mrfFile = new File(settingsDir, "recent_files");
         List<String> lines = new ArrayList<>();
         for (File file : recentFiles) {
             lines.add(file.getAbsolutePath());
@@ -170,7 +192,7 @@ public class RecentFilesManager {
 
         // Persist it even if empty, as we want to overwrite the previous list:
         try {
-            FileSystemUtil.writeLinesToFile(lines, MRF_FILE);
+            FileSystemUtil.writeLinesToFile(lines, mrfFile);
         }
         catch (IOException ioe) {
             logger.warning("Failed to write recent files list to file: " + ioe.getMessage());
