@@ -270,16 +270,19 @@ Properties file: `~/.CryptText/CryptText.props`
 
 **General Settings**
 - `UI.General.singleInstance` - Enable single-instance mode
-- `UI.General.showFullPath` - Show full file path in title bar
+- `UI.General.showFullPathInTitle` - Show full file path in title bar
 - `UI.General.recentFilesLimit` - Number of recent files
 
 **Editor Settings**
-- `UI.Editor.font` - Editor font
+- `UI.Editor.editorFont` - Editor font
 - `UI.Editor.gutterFont` - Line number font
 - `UI.Editor.showLineNumbers` - Show line number gutter
-- `UI.Editor.overrideLaf` - Use custom editor colors
-- `UI.Editor.theme` - Color theme
-- `UI.Editor.{bgColor,fgColor,gutterBgColor,gutterFgColor}` - Colors
+- `UI.Editor.overrideLaF` - Use custom editor colors
+- `UI.Editor.colorTheme` - Color theme
+- `UI.Editor.editorBackground` - Editor background color
+- `UI.Editor.editorForeground` - Editor foreground color
+- `UI.Editor.gutterBackground` - Gutter background color
+- `UI.Editor.gutterForeground` - Gutter foreground color
 
 **Tab Settings**
 - `UI.Editor tabs.showLockIcons` - Show padlock on encrypted files
