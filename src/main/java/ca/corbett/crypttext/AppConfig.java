@@ -43,6 +43,7 @@ import java.awt.Frame;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * Centralizes and manages application configuration properties.
@@ -51,6 +52,8 @@ import java.util.List;
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
 public class AppConfig extends AppProperties<CryptTextExtension> {
+
+    private static final Logger log = Logger.getLogger(AppConfig.class.getName());
 
     /**
      * For thread-safe lazy-loaded singleton pattern.
@@ -644,6 +647,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private void setColorTheme(PropertyFormFieldValueChangedEvent event) {
         FormPanel fp = event.formPanel();
         if (fp == null) {
+            // Should never happen, but...
+            log.warning("Received a form change event with null FormPanel. Cannot update color theme.");
             return;
         }
 
@@ -652,6 +657,11 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         ColorField editorFgField = (ColorField)fp.getFormField(editorForegroundColorProp.getFullyQualifiedName());
         ColorField gutterBgField = (ColorField)fp.getFormField(gutterBackgroundColorProp.getFullyQualifiedName());
         ColorField gutterFgField = (ColorField)fp.getFormField(gutterForegroundColorProp.getFullyQualifiedName());
+        if (editorBgField == null || editorFgField == null || gutterBgField == null || gutterFgField == null) {
+            // Should never happen, but just in case...
+            log.warning("One or more color fields were not found in the form. Cannot update color theme.");
+            return;
+        }
 
         // Set them all!
         ColorTheme theme = (ColorTheme)((ComboField<?>)event.formField()).getSelectedItem();

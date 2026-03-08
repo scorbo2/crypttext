@@ -2,7 +2,6 @@ package ca.corbett.crypttext.ui;
 
 
 import ca.corbett.crypttext.AppConfig;
-import ca.corbett.extras.LookAndFeelManager;
 
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
@@ -43,6 +42,7 @@ public class LineNumberGutter extends JPanel implements DocumentListener, CaretL
         textPane.addCaretListener(this);
         // Also revalidate on component resize
         textPane.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
             public void componentResized(java.awt.event.ComponentEvent e) {
                 revalidate();
                 repaint();
@@ -60,9 +60,14 @@ public class LineNumberGutter extends JPanel implements DocumentListener, CaretL
         Color fg = AppConfig.getInstance().getGutterForegroundColor();
         setBackground(bg);
         lineNumberColor = fg;
-        Color borderColor = LookAndFeelManager.isDark()
-                ? bg.brighter()
-                : bg.darker();
+        Color borderColor;
+        if (bg.getRed() < 128 && bg.getGreen() < 128 && bg.getBlue() < 128) {
+            // If the background is dark, use a lighter border color
+            borderColor = bg.brighter();
+        }
+        else {
+            borderColor = bg.darker();
+        }
         setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, borderColor));
         repaint();
     }
