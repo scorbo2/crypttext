@@ -10,6 +10,7 @@ import ca.corbett.extras.MessageUtil;
 
 import javax.swing.JTabbedPane;
 import java.awt.Component;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,8 +24,14 @@ import java.util.logging.Logger;
  * <p>
  * <b>Usage:</b> - you can treat this as a regular JTabbedPane, and add
  * any Component using the usual parent class methods. This class also
- * offers an addEditorTab() method that
+ * offers methods to add EditorTabs specifically:
  * </p>
+ * <ul>
+ *     <li><b>newTextTab()</b> - creates a new, blank, untitled EditorTab.</li>
+ *     <li><b>newTextTab(String)</b> - creates a new, blank EditorTab with the given title.</li>
+ *     <li><b>newTextTab(Text, String)</b> - creates a new EditorTab for the given Text instance, with the given title.</li>
+ *     <li><b>newTextTab(File)</b> - attempts to create a new EditorTab for the given file (may not succeed!).</li>
+ * </ul>
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
@@ -46,7 +53,7 @@ public class EditorTabPane extends JTabbedPane {
      * Creates a new, untitled Text tab.
      */
     public void newTextTab() {
-        newTextTab(null);
+        newTextTab((String)null);
     }
 
     /**
@@ -98,6 +105,30 @@ public class EditorTabPane extends JTabbedPane {
 
         // Select this tab immediately:
         setSelectedIndex(getTabCount() - 1);
+    }
+
+    /**
+     * Attempts to create a new Text tab for the given text file.
+     * Will show an error dialog if the load fails for any reason.
+     *
+     * @param textFile The file containing text contents to load. Must not be null.
+     */
+    public void newTextTab(File textFile) {
+        if (textFile == null) {
+            throw new IllegalArgumentException("Given textFile cannot be null");
+        }
+        try {
+            Text text = textManager.fromFile(textFile);
+            clearIfScratch();
+            newTextTab(text, textFile.getName()); // defer to overloaded method to handle duplicate checks/tab creation.
+        }
+        catch (VetoException ignored) {
+            // An extension vetoed the load!
+            // Just skip it - TextManager has already logged the veto.
+        }
+        catch (IOException ioe) {
+            getMessageUtil().error("Error opening file: " + ioe.getMessage(), ioe);
+        }
     }
 
     /**
