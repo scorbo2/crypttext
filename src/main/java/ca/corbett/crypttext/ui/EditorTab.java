@@ -270,6 +270,7 @@ public class EditorTab extends JPanel implements UIReloadable {
      * Text that was loaded from an encrypted file will be saved in an encrypted state.
      */
     public void saveAs() throws Exception {
+        boolean wasDirty = isDirty(); // make a note of our current state, so we can restore it if the save is vetoed
         JFileChooser fileChooser = MainWindow.getInstance().getFileChooser();
         int result = fileChooser.showSaveDialog(MainWindow.getInstance());
         if (result == JFileChooser.APPROVE_OPTION) {
@@ -306,7 +307,9 @@ public class EditorTab extends JPanel implements UIReloadable {
             catch (VetoException ignored) {
                 // Save was vetoed by an extension!
                 // Veto already logged by TextManager - just stay dirty and do nothing here.
-                markDirty();
+                if (wasDirty) {
+                    markDirty();
+                }
             }
         }
     }
@@ -321,6 +324,7 @@ public class EditorTab extends JPanel implements UIReloadable {
      * @throws Exception If the save operation fails or is vetoed by an extension, or if the decrypt fails.
      */
     public void saveUnencrypted() throws Exception {
+        boolean wasDirty = isDirty();
         boolean wasEncrypted = isEncrypted();
         File sourceFile = diskContents.getSourceFile();
         JFileChooser fileChooser = MainWindow.getInstance().getFileChooser();
@@ -362,10 +366,13 @@ public class EditorTab extends JPanel implements UIReloadable {
                 // Save was vetoed by an extension!
                 // We're in a wonky state now, because we've possibly already decrypted in memory.
                 // So, mark ourselves as dirty so the user will know that we need a save.
-                markDirty();
+                if (wasDirty) {
+                    markDirty();
+                }
 
                 // If we performed an in-memory decryption above, the user should be warned:
                 if (wasEncrypted) {
+                    markDirty();
                     getMessageUtil().warning("Save vetoed",
                                              "The save was vetoed by an extension. Note: your tab is now showing decrypted content.");
                 }
