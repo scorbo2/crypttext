@@ -1,6 +1,7 @@
 package ca.corbett.crypttext.extensions.builtin;
 
 import ca.corbett.crypttext.AppConfig;
+import ca.corbett.crypttext.Version;
 import ca.corbett.crypttext.extensions.CryptTextExtension;
 import ca.corbett.crypttext.extensions.ExtraComponentPosition;
 import ca.corbett.crypttext.ui.MainWindow;
@@ -8,8 +9,8 @@ import ca.corbett.crypttext.ui.TextFileFilter;
 import ca.corbett.crypttext.ui.actions.UIReloadAction;
 import ca.corbett.extensions.AppExtensionInfo;
 import ca.corbett.extras.EnhancedAction;
+import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.MessageUtil;
-import ca.corbett.extras.Version;
 import ca.corbett.extras.dirtree.DirTree;
 import ca.corbett.extras.dirtree.DirTreeAdapter;
 import ca.corbett.extras.io.KeyStrokeManager;
@@ -19,6 +20,9 @@ import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.KeyStrokeProperty;
 
 import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
@@ -39,7 +43,8 @@ public class DirTreeExtension extends CryptTextExtension {
     private static final String SHOW_TREE_PROP = "UI.General.showTree";
     private static final String KEY_PROP = AppConfig.KEYSTROKE_PREFIX + "General.toggleKey";
 
-    private final Listener listener = new Listener();
+    private final CustomTreeListener treeListener = new CustomTreeListener();
+    private final LaFChangeListener lafChangeListener = new LaFChangeListener();
     private MessageUtil messageUtil;
     private final AppExtensionInfo extInfo;
     private DirTree dirTree;
@@ -58,18 +63,18 @@ public class DirTreeExtension extends CryptTextExtension {
 
     @Override
     public void onActivate() {
-        // We defer the creation of the DirTree until activation,
-        // so that it can pick up the current Look and Feel.
         dirTree = new DirTree(AppConfig.getInstance().getLastBrowseDirectory());
         dirTree.setName("DirTree"); // in case we get added to a JTabbedPane
         dirTree.setShowFiles(true);
         dirTree.setFileFilter(TextFileFilter.DEFAULT);
-        dirTree.addDirTreeListener(listener);
+        dirTree.addDirTreeListener(treeListener);
+        LookAndFeelManager.addChangeListener(lafChangeListener);
     }
 
     @Override
     public void onDeactivate() {
-        dirTree.removeDirTreeListener(listener);
+        LookAndFeelManager.removeChangeListener(lafChangeListener);
+        dirTree.removeDirTreeListener(treeListener);
         dirTree = null;
     }
 
@@ -139,7 +144,7 @@ public class DirTreeExtension extends CryptTextExtension {
      * An internal class to listen for double-click events in our DirTree
      * and open the selected file in a new editor tab.
      */
-    private class Listener extends DirTreeAdapter {
+    private class CustomTreeListener extends DirTreeAdapter {
         @Override
         public void fileDoubleClicked(DirTree source, File file) {
             // Quick sanity check:
@@ -163,12 +168,29 @@ public class DirTreeExtension extends CryptTextExtension {
      */
     private class ToggleTreeAction extends EnhancedAction {
         public ToggleTreeAction() {
-            super(KEY_PROP);
+            super("Show/hide DirTree"); // never shown, so name doesn't really matter
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
             toggleTreeEnabled();
+        }
+    }
+
+    /**
+     * Application startup loads and activates all extensions before setting the
+     * configured Look and Feel. This means that our DirTree is created before
+     * the LaF is set. So, we need to listen for LaF changes and update the UI
+     * of our DirTree accordingly when that happens. After initial application
+     * startup, this listener becomes redundant, since our LaF manager will
+     * handle updating all existing windows, but we need this for app startup.
+     */
+    private class LaFChangeListener implements ChangeListener {
+        @Override
+        public void stateChanged(ChangeEvent e) {
+            if (dirTree != null) {
+                SwingUtilities.updateComponentTreeUI(dirTree);
+            }
         }
     }
 }
