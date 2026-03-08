@@ -9,6 +9,7 @@ import ca.corbett.crypttext.ui.MainWindow;
 import ca.corbett.crypttext.ui.UIReloadable;
 import ca.corbett.crypttext.ui.actions.UIReloadAction;
 import ca.corbett.extensions.AppExtensionInfo;
+import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
@@ -19,6 +20,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import java.awt.BorderLayout;
@@ -52,6 +54,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
 
     private final AppExtensionInfo extInfo;
     private final StatusBarComponent statusBar;
+    private final LaFChangeListener lafChangeListener = new LaFChangeListener();
 
     public StatusBarExtension() {
         extInfo = new AppExtensionInfo.Builder("Status bar")
@@ -76,6 +79,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
         MainWindow.getInstance().getEditorTabPane().addChangeListener(this);
 
         // Listen for UI updates, so we can update our cosmetic properties:
+        LookAndFeelManager.addChangeListener(lafChangeListener);
         UIReloadAction.getInstance().registerReloadable(this);
 
         // Force an initial update to pick up our property values now:
@@ -90,6 +94,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
         // Stop listening for events:
         MainWindow.getInstance().getEditorTabPane().removeChangeListener(this);
         UIReloadAction.getInstance().unregisterReloadable(this);
+        LookAndFeelManager.removeChangeListener(lafChangeListener);
         statusBar.setCurrentTab(null); // clear any listeners our status bar has, if any
     }
 
@@ -359,6 +364,21 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
         @Override
         public void onContentChange(String newContent) {
             updateTextStatsLabel(newContent);
+        }
+    }
+
+    /**
+     * Application startup loads and activates all extensions before setting the
+     * configured Look and Feel. This means that our StatusBar is created before
+     * the LaF is set. So, we need to listen for LaF changes and update the UI
+     * of our StatusBar accordingly when that happens. After initial application
+     * startup, this listener becomes redundant, since our LaF manager will
+     * handle updating all existing windows, but we need this for app startup.
+     */
+    private class LaFChangeListener implements ChangeListener {
+        @Override
+        public void stateChanged(ChangeEvent e) {
+            SwingUtilities.updateComponentTreeUI(statusBar);
         }
     }
 }

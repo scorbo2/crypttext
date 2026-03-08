@@ -2,6 +2,7 @@ package ca.corbett.crypttext;
 
 import ca.corbett.crypttext.extensions.CryptTextExtension;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
+import ca.corbett.crypttext.ui.ColorTheme;
 import ca.corbett.crypttext.ui.actions.AboutAction;
 import ca.corbett.crypttext.ui.actions.CryptAction;
 import ca.corbett.crypttext.ui.actions.ExitAction;
@@ -15,18 +16,30 @@ import ca.corbett.crypttext.ui.actions.SaveAction;
 import ca.corbett.crypttext.ui.actions.SaveAsAction;
 import ca.corbett.crypttext.ui.actions.SaveUnencryptedAction;
 import ca.corbett.extensions.AppProperties;
+import ca.corbett.extras.LookAndFeelManager;
+import ca.corbett.extras.gradient.ColorSelectionType;
 import ca.corbett.extras.io.KeyStrokeManager;
 import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
+import ca.corbett.extras.properties.ColorProperty;
 import ca.corbett.extras.properties.DirectoryProperty;
+import ca.corbett.extras.properties.EnumProperty;
 import ca.corbett.extras.properties.FontProperty;
 import ca.corbett.extras.properties.IntegerProperty;
 import ca.corbett.extras.properties.KeyStrokeProperty;
 import ca.corbett.extras.properties.LookAndFeelProperty;
+import ca.corbett.extras.properties.PropertyFormFieldChangeListener;
+import ca.corbett.extras.properties.PropertyFormFieldValueChangedEvent;
+import ca.corbett.forms.FormPanel;
+import ca.corbett.forms.fields.CheckBoxField;
+import ca.corbett.forms.fields.ColorField;
+import ca.corbett.forms.fields.ComboField;
 import com.formdev.flatlaf.FlatLightLaf;
 
 import javax.swing.Action;
+import java.awt.Color;
 import java.awt.Font;
+import java.awt.Frame;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -93,6 +106,12 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private BooleanProperty showLineNumbersProp;
     private FontProperty editorFontProp;
     private FontProperty gutterFontProp;
+    private BooleanProperty overrideLafProp;
+    private EnumProperty<ColorTheme> editorThemeProp;
+    private ColorProperty editorBackgroundColorProp;
+    private ColorProperty editorForegroundColorProp;
+    private ColorProperty gutterBackgroundColorProp;
+    private ColorProperty gutterForegroundColorProp;
 
     // These will be used in the menu bar and with KeyStrokeManager:
     // (they could also be added to buttons or popup menus as needed)
@@ -118,6 +137,20 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
 
     public static AppConfig getInstance() {
         return SingletonHolder.INSTANCE;
+    }
+
+    /**
+     * Overridden so we can set the initial enabled/disabled state our properties.
+     */
+    @Override
+    public boolean showPropertiesDialog(Frame owner) {
+        boolean isCustom = overrideLafProp.getValue();
+        editorThemeProp.setInitiallyEditable(isCustom);
+        editorBackgroundColorProp.setInitiallyEditable(isCustom);
+        editorForegroundColorProp.setInitiallyEditable(isCustom);
+        gutterBackgroundColorProp.setInitiallyEditable(isCustom);
+        gutterForegroundColorProp.setInitiallyEditable(isCustom);
+        return super.showPropertiesDialog(owner);
     }
 
     /**
@@ -292,6 +325,82 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     }
 
     /**
+     * Returns the configured editor background color.
+     * This will come from the current Look and Feel if we are not set to override it.
+     * Otherwise, this is the user-selected background color.
+     */
+    public Color getEditorBackgroundColor() {
+        if (overrideLafProp.getValue()) {
+            return editorBackgroundColorProp.getSolidColor();
+        }
+        else {
+            return LookAndFeelManager.getLafColor("Panel.background", Color.LIGHT_GRAY);
+        }
+    }
+
+    /**
+     * Returns the configured editor foreground color.
+     * This will come from the current Look and Feel if we are not set to override it.
+     * Otherwise, this is the user-selected foreground color.
+     */
+    public Color getEditorForegroundColor() {
+        if (overrideLafProp.getValue()) {
+            return editorForegroundColorProp.getSolidColor();
+        }
+        else {
+            return LookAndFeelManager.getLafColor("Panel.foreground", Color.BLACK);
+        }
+    }
+
+    /**
+     * Returns the configured gutter background color (for line numbers).
+     * This will come from the current Look and Feel if we are not set to override it
+     * - in this case, we will attempt to be a little smarter and return a color that is
+     * slightly offset from the regular background color, to provide some visual contrast
+     * while still fitting in with the overall theme.
+     */
+    public Color getGutterBackgroundColor() {
+        if (overrideLafProp.getValue()) {
+            return gutterBackgroundColorProp.getSolidColor();
+        }
+        else {
+            // We want to offset the gutter background slightly, but we need
+            // to be careful, because the current LaF might be light or dark:
+            Color bg = LookAndFeelManager.getLafColor("Panel.background", Color.LIGHT_GRAY);
+            if (LookAndFeelManager.isDark()) {
+                bg = bg.brighter();
+            }
+            else {
+                bg = bg.darker();
+            }
+            return bg;
+        }
+    }
+
+    /**
+     * Returns the configured gutter foreground color (for line numbers).
+     * This will come from the current Look and Feel if we are not set to override it
+     * - in this case, we will attempt to be a little smarter and return a color that is
+     * slightly offset from the regular foreground color, to provide some visual contrast
+     * while still fitting in with the overall theme.
+     */
+    public Color getGutterForegroundColor() {
+        if (overrideLafProp.getValue()) {
+            return gutterForegroundColorProp.getSolidColor();
+        }
+        else {
+            Color fg = LookAndFeelManager.getLafColor("Panel.foreground", Color.BLACK);
+            if (LookAndFeelManager.isDark()) {
+                fg = fg.brighter();
+            }
+            else {
+                fg = fg.darker();
+            }
+            return fg;
+        }
+    }
+
+    /**
      * This is where you can define the configuration properties for your application.
      * These properties will be displayed in the PropertiesDialog, and persisted
      * to the properties file automatically.
@@ -363,6 +472,59 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
                                                   "Show line numbers in editor",
                                                   true);
         props.add(showLineNumbersProp);
+
+        overrideLafProp = new BooleanProperty("UI.Editor.overrideLaF",
+                                              "Override Look and Feel with custom editor colors",
+                                              false);
+        props.add(overrideLafProp);
+
+        editorThemeProp = new EnumProperty<>("UI.Editor.colorTheme",
+                                             "Set from theme:",
+                                             ColorTheme.MATRIX);
+        editorThemeProp.addFormFieldChangeListener(this::setColorTheme);
+        props.add(editorThemeProp);
+
+        editorBackgroundColorProp = new ColorProperty("UI.Editor.editorBackground",
+                                                      "Editor bg:",
+                                                      ColorSelectionType.SOLID)
+                .setSolidColor(ColorTheme.MATRIX.getEditorBackground());
+        editorBackgroundColorProp.addLeftPadding(20); // Indent a little bit
+        props.add(editorBackgroundColorProp);
+
+        editorForegroundColorProp = new ColorProperty("UI.Editor.editorForeground",
+                                                      "Editor fg:",
+                                                      ColorSelectionType.SOLID)
+                .setSolidColor(ColorTheme.MATRIX.getEditorForeground());
+        editorForegroundColorProp.addLeftPadding(20); // Indent a little bit
+        props.add(editorForegroundColorProp);
+
+        gutterBackgroundColorProp = new ColorProperty("UI.Editor.gutterBackground",
+                                                      "Gutter bg:",
+                                                      ColorSelectionType.SOLID)
+                .setSolidColor(ColorTheme.MATRIX.getGutterBackground());
+        gutterBackgroundColorProp.addLeftPadding(20); // Indent a little bit
+        props.add(gutterBackgroundColorProp);
+
+        gutterForegroundColorProp = new ColorProperty("UI.Editor.gutterForeground",
+                                                      "Gutter fg:",
+                                                      ColorSelectionType.SOLID)
+                .setSolidColor(ColorTheme.MATRIX.getGutterForeground());
+        gutterForegroundColorProp.addLeftPadding(20); // Indent a little bit
+        props.add(gutterForegroundColorProp);
+
+        // Set up a listener to ensure proper enabled/disabled state:
+        overrideLafProp.addFormFieldChangeListener(new PropertyFormFieldChangeListener() {
+            @Override
+            public void valueChanged(PropertyFormFieldValueChangedEvent event) {
+                boolean isCustom = ((CheckBoxField)event.formField()).isChecked();
+                FormPanel fp = event.formPanel();
+                fp.getFormField(editorThemeProp.getFullyQualifiedName()).setEnabled(isCustom);
+                fp.getFormField(editorBackgroundColorProp.getFullyQualifiedName()).setEnabled(isCustom);
+                fp.getFormField(editorForegroundColorProp.getFullyQualifiedName()).setEnabled(isCustom);
+                fp.getFormField(gutterBackgroundColorProp.getFullyQualifiedName()).setEnabled(isCustom);
+                fp.getFormField(gutterForegroundColorProp.getFullyQualifiedName()).setEnabled(isCustom);
+            }
+        });
 
         return props;
     }
@@ -473,5 +635,29 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
                           .setAllowBlank(true));
 
         return props;
+    }
+
+    /**
+     * Invoked when the color theme chooser is modified. Will look up all relevant
+     * color fields and set all their values according to the selected scheme.
+     */
+    private void setColorTheme(PropertyFormFieldValueChangedEvent event) {
+        FormPanel fp = event.formPanel();
+        if (fp == null) {
+            return;
+        }
+
+        // Look up all our generated form fields:
+        ColorField editorBgField = (ColorField)fp.getFormField(editorBackgroundColorProp.getFullyQualifiedName());
+        ColorField editorFgField = (ColorField)fp.getFormField(editorForegroundColorProp.getFullyQualifiedName());
+        ColorField gutterBgField = (ColorField)fp.getFormField(gutterBackgroundColorProp.getFullyQualifiedName());
+        ColorField gutterFgField = (ColorField)fp.getFormField(gutterForegroundColorProp.getFullyQualifiedName());
+
+        // Set them all!
+        ColorTheme theme = (ColorTheme)((ComboField<?>)event.formField()).getSelectedItem();
+        editorBgField.setColor(theme.getEditorBackground());
+        editorFgField.setColor(theme.getEditorForeground());
+        gutterBgField.setColor(theme.getGutterBackground());
+        gutterFgField.setColor(theme.getGutterForeground());
     }
 }

@@ -118,6 +118,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         isDirty = false;
         tabHeader = new EditorTabHeader(this, name);
         UIReloadAction.getInstance().registerReloadable(this);
+        reloadUI(); // force an immediate update to pick up the correct theme and color scheme
     }
 
     /**
@@ -542,6 +543,10 @@ public class EditorTab extends JPanel implements UIReloadable {
             scrollPane.setRowHeaderView(AppConfig.getInstance().isShowLineNumbers() ? gutter : null);
             textPane.setFont(AppConfig.getInstance().getEditorFont());
             gutter.setLineNumberFont(AppConfig.getInstance().getGutterFont());
+            gutter.updateColors(); // tell our gutter to update its colors based on the current theme
+            textPane.setBackground(AppConfig.getInstance().getEditorBackgroundColor());
+            textPane.setForeground(AppConfig.getInstance().getEditorForegroundColor());
+            repaint();
         }
         finally {
             SwingUtilities.invokeLater(() -> eventsEnabled = true);
