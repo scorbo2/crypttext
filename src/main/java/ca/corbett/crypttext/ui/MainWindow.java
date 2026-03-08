@@ -3,6 +3,7 @@ package ca.corbett.crypttext.ui;
 import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.CryptTextResourceLoader;
 import ca.corbett.crypttext.Main;
+import ca.corbett.crypttext.RecentFilesManager;
 import ca.corbett.crypttext.Version;
 import ca.corbett.crypttext.VetoException;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
@@ -46,6 +47,7 @@ public final class MainWindow extends JFrame implements UIReloadable {
     private final KeyStrokeManager keyStrokeManager;
     private final EditorTabPane editorTabPane;
     private TabStateManager tabStateManager;
+    private final RecentFilesManager recentFilesManager;
     private MessageUtil messageUtil;
 
     private MainWindow() {
@@ -56,6 +58,9 @@ public final class MainWindow extends JFrame implements UIReloadable {
         addWindowListener(new WindowCloseHandler());
         keyStrokeManager = new KeyStrokeManager(this);
         menuManager = new MenuManager();
+        recentFilesManager = new RecentFilesManager();
+        recentFilesManager.setListLimit(AppConfig.getInstance().getRecentFilesLimit());
+        recentFilesManager.load();
         tabStateManager = CryptTextExtensionManager.getInstance().getTabStateManager();
         setJMenuBar(menuManager.getMainMenuBar());
         UIReloadAction.getInstance().registerReloadable(this);
@@ -152,11 +157,23 @@ public final class MainWindow extends JFrame implements UIReloadable {
     }
 
     /**
+     * Adds a recently-accessed file to our RecentFilesManager, which manages the list and persistence of recent files.
+     * This will update the "recent files" submenu in the File menu.
+     */
+    public void addRecentFile(File file) {
+        recentFilesManager.add(file);
+        menuManager.rebuildRecentFilesMenu(recentFilesManager.getRecentFiles());
+    }
+
+    /**
      * Hook invoked as the application is shutting down,
      * or when the application needs to restart to pick up an extension change.
      */
     public void cleanup() {
         logger.info("Shutting down: MainWindow cleanup invoked.");
+
+        // Persist our list of "most recently accessed" files:
+        recentFilesManager.save();
 
         // There is no "cancel" option possible here, because this method is invoked
         // when the application is definitely about to close (for example, via UpdateManager
@@ -237,7 +254,9 @@ public final class MainWindow extends JFrame implements UIReloadable {
         setKeyStrokes();
 
         // Rebuild our main menu, as the available items may have changed:
+        recentFilesManager.setListLimit(AppConfig.getInstance().getRecentFilesLimit());
         menuManager.rebuildAll();
+        menuManager.rebuildRecentFilesMenu(recentFilesManager.getRecentFiles());
 
         // User may have enabled or disabled the option to show lock icons on tabs:
         editorTabPane.updateTabIcons();

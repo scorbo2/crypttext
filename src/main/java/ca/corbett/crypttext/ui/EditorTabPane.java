@@ -106,6 +106,11 @@ public class EditorTabPane extends JTabbedPane {
         addTab(title, editorTab.getIcon(), editorTab);
         setTabComponentAt(getTabCount() - 1, editorTab.getTabHeader());
 
+        // If this isn't a scratch file, add it to the "recent files" list:
+        if (!editorTab.isScratchFile()) {
+            MainWindow.getInstance().addRecentFile(editorTab.getDiskContents().getSourceFile());
+        }
+
         // Select this tab immediately:
         setSelectedIndex(getTabCount() - 1);
     }

@@ -7,6 +7,8 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import java.awt.event.KeyEvent;
+import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -27,6 +29,8 @@ public class MenuManager {
     private JMenu editMenu;
     private JMenu cryptMenu;
     private JMenu helpMenu;
+
+    private JMenu recentFilesMenu; // this is a submenu of File, but we keep a reference to it for easy rebuilding
 
     /**
      * Creates and populates a new MenuManager.
@@ -52,6 +56,30 @@ public class MenuManager {
         rebuildEditMenu();
         rebuildCryptMenu();
         rebuildHelpMenu();
+    }
+
+    /**
+     * Can be invoked to rebuild the "recent files" submenu in the File menu.
+     *
+     * @param recentFiles A List of Files to show. Can be empty or null to clear the submenu.
+     */
+    public void rebuildRecentFilesMenu(List<File> recentFiles) {
+        if (recentFiles == null) {
+            recentFiles = new ArrayList<>();
+        }
+        recentFilesMenu.removeAll();
+        if (recentFiles.isEmpty()) {
+            JMenuItem noRecentFilesItem = new JMenuItem("(No recent files)");
+            noRecentFilesItem.setEnabled(false);
+            recentFilesMenu.add(noRecentFilesItem);
+            return;
+        }
+
+        for (File file : recentFiles) {
+            JMenuItem item = new JMenuItem(file.getAbsolutePath());
+            item.addActionListener(e -> openRecentFile(file));
+            recentFilesMenu.add(item);
+        }
     }
 
     private void rebuildMenuBar() {
@@ -85,8 +113,13 @@ public class MenuManager {
     private void rebuildFileMenu() {
         fileMenu.removeAll();
 
+        // Open actions:
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getNewTabAction()));
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getOpenFileAction()));
+        recentFilesMenu = new JMenu("Recent files");
+        fileMenu.add(recentFilesMenu);
+        // Save actions:
+        fileMenu.addSeparator();
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getFileSaveAction()));
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getFileSaveAsAction()));
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getSaveUnencryptedAction()));
@@ -154,5 +187,9 @@ public class MenuManager {
 
         helpMenu.add(new JMenuItem(AppConfig.getInstance().getLogConsoleAction()));
         helpMenu.add(new JMenuItem(AppConfig.getInstance().getAboutAction()));
+    }
+
+    private void openRecentFile(File f) {
+        MainWindow.getInstance().getEditorTabPane().newTextTab(f);
     }
 }
