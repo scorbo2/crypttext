@@ -181,7 +181,7 @@ public final class MainWindow extends JFrame implements UIReloadable {
                             // An extension vetoed the save!
                             // Just skip it - EditorTab has already logged the veto (indirectly via TextManager).
                         }
-                        catch (IOException ioe) {
+                        catch (Exception ioe) {
                             // Just log it at this point... we are exiting:
                             logger.log(Level.SEVERE, "Error saving tab \""
                                                + editorTab.getTabName()
@@ -457,13 +457,13 @@ public final class MainWindow extends JFrame implements UIReloadable {
         if (c instanceof EditorTab editorTab) { // this also filters out null (no tab open)
 
             // for scratch files or null files, just show the tab name (e.g. "Untitled 1")
-            if (editorTab.isScratchFile() || editorTab.getTextInstance().getSourceFile() == null) {
+            if (editorTab.isScratchFile() || editorTab.getDiskContents().getSourceFile() == null) {
                 setTitle(Version.FULL_NAME + " - " + editorTab.getTabName());
             }
 
             // Otherwise, use the full path:
             else {
-                setTitle(Version.FULL_NAME + " - " + editorTab.getTextInstance().getSourceFile().getAbsolutePath());
+                setTitle(Version.FULL_NAME + " - " + editorTab.getDiskContents().getSourceFile().getAbsolutePath());
             }
         }
     }

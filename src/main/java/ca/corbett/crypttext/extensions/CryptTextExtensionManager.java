@@ -2,6 +2,7 @@ package ca.corbett.crypttext.extensions;
 
 import ca.corbett.crypttext.Version;
 import ca.corbett.crypttext.crypt.CryptMetadata;
+import ca.corbett.crypttext.crypt.EncryptedText;
 import ca.corbett.crypttext.extensions.builtin.StatusBarExtension;
 import ca.corbett.crypttext.extensions.builtin.TestExtension;
 import ca.corbett.crypttext.ui.TabStateManager;
@@ -240,9 +241,9 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
      * @param cryptMetadata The CryptMetadata instance associated with the text that is about to be encrypted.
      * @return an encrypted version of the text, or null to allow the application to handle encryption.
      */
-    public String textWillEncrypt(String textToEncrypt, CryptMetadata cryptMetadata) {
+    public EncryptedText textWillEncrypt(String textToEncrypt, CryptMetadata cryptMetadata) {
         for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
-            String result = extension.textWillEncrypt(textToEncrypt, cryptMetadata);
+            EncryptedText result = extension.textWillEncrypt(textToEncrypt, cryptMetadata);
             if (result != null) {
                 return result; // if any extension returns a non-null value, we're done.
             }
@@ -258,13 +259,12 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
      *     subsequent extensions in the load order sequence from being sent this message.
      * </p>
      *
-     * @param textToDecrypt The encrypted text that is about to be decrypted (typically base64 encoded).
-     * @param cryptMetadata The CryptMetadata instance associated with the text that is about to be decrypted.
+     * @param encryptedText the text and metadata of the text that is about to be decrypted.
      * @return a decrypted version of the text, or null to allow the application to handle decryption.
      */
-    public String textWillDecrypt(String textToDecrypt, CryptMetadata cryptMetadata) {
+    public String textWillDecrypt(EncryptedText encryptedText) {
         for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
-            String result = extension.textWillDecrypt(textToDecrypt, cryptMetadata);
+            String result = extension.textWillDecrypt(encryptedText);
             if (result != null) {
                 return result; // if any extension returns a non-null value, we're done.
             }

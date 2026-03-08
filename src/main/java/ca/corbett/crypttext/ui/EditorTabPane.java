@@ -83,7 +83,7 @@ public class EditorTabPane extends JTabbedPane {
         for (int i = 0; i < getTabCount(); i++) {
             Component tab = getComponentAt(i);
             if (tab instanceof EditorTab editorTab) {
-                if (editorTab.getTextInstance().isSameSourceFile(text)) {
+                if (editorTab.getDiskContents().isSameSourceFile(text)) {
                     setSelectedIndex(i);
                     return;
                 }
@@ -126,7 +126,7 @@ public class EditorTabPane extends JTabbedPane {
         if (getTabCount() == 1) {
             Component tab = getComponentAt(0);
             if (tab instanceof EditorTab editorTab) {
-                return editorTab.isScratchFile() && editorTab.getCurrentText().isEmpty();
+                return editorTab.isScratchFile() && editorTab.getMemoryContents().isEmpty();
             }
         }
 
@@ -145,12 +145,12 @@ public class EditorTabPane extends JTabbedPane {
                 Component c = getComponentAt(0);
                 if (c instanceof EditorTab editorTab) {
                     try {
-                        textManager.remove(editorTab.getTextInstance());
+                        textManager.remove(editorTab.getDiskContents());
                     }
                     catch (IOException ioe) {
                         // Just log it, not worth a popup dialog:
                         log.log(Level.WARNING, "Error cleaning up TextManager after clearing scratch tab for file: "
-                                + editorTab.getTextInstance().getSourceFile(), ioe);
+                                + editorTab.getDiskContents().getSourceFile(), ioe);
                     }
                 }
                 removeTabAt(0);
@@ -172,6 +172,29 @@ public class EditorTabPane extends JTabbedPane {
     }
 
     /**
+     * Invoked from EditorTab's save(), saveAs(), and saveUnencrypted() methods, if the
+     * tab contents get saved to a different file. We update the tab name for that editor
+     * tab, and also let MainWindow know, so it can update the title bar if needed.
+     *
+     * @param editorTab the EditorTab whose name should be updated. must not be null.
+     * @param newName   The new name for the given EditorTab
+     */
+    void updateTabName(EditorTab editorTab, String newName) {
+        if (editorTab == null) {
+            throw new IllegalArgumentException("Given EditorTab cannot be null");
+        }
+        if (newName == null || newName.isBlank()) {
+            throw new IllegalArgumentException("Given newName cannot be null or blank");
+        }
+
+        int index = indexOfComponent(editorTab);
+        if (index != -1) {
+            setTitleAt(index, newName);
+            MainWindow.getInstance().updateTitleBar();
+        }
+    }
+
+    /**
      * Invoked from EditorTab.close() to remove the given tab from this tab pane.
      *
      * @param editorTab the tab to close. must not be null.
@@ -183,7 +206,7 @@ public class EditorTabPane extends JTabbedPane {
         }
 
         // Check if a save is needed, and prompt if so:
-        if (editorTab.isDirty() || (editorTab.isScratchFile() && !editorTab.getCurrentText().isEmpty())) {
+        if (editorTab.isDirty() || (editorTab.isScratchFile() && !editorTab.getMemoryContents().isEmpty())) {
             int result = getMessageUtil().askYesNoCancel("Unsaved changes",
                                                          "This tab has unsaved changes. Do you want to save before closing?");
             if (result == MessageUtil.CANCEL) {
@@ -197,9 +220,10 @@ public class EditorTabPane extends JTabbedPane {
                     // An extension vetoed the save! Just skip it - TextManager has already logged the veto.
                     return false; // abort the close action if we couldn't save
                 }
-                catch (IOException ioe) {
+                catch (Exception e) {
                     getMessageUtil().error("Error saving file",
-                                           "An error occurred while saving the file:\n" + ioe.getMessage());
+                                           "An error occurred while saving the file:\n" + e.getMessage(),
+                                           e);
                     return false; // abort the close action if we couldn't save
                 }
             }
@@ -211,12 +235,12 @@ public class EditorTabPane extends JTabbedPane {
 
             // Also clean up TextManager (remove from cache, clean scratch file, etc.):
             try {
-                textManager.remove(editorTab.getTextInstance());
+                textManager.remove(editorTab.getDiskContents());
             }
             catch (IOException ioe) {
                 // Just log it, not worth a popup dialog:
                 log.log(Level.WARNING, "Error cleaning up TextManager after closing tab for file: "
-                        + editorTab.getTextInstance().getSourceFile(), ioe);
+                        + editorTab.getDiskContents().getSourceFile(), ioe);
             }
         }
 

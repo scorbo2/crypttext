@@ -1,5 +1,6 @@
 package ca.corbett.crypttext.ui.actions;
 
+import ca.corbett.crypttext.VetoException;
 import ca.corbett.crypttext.ui.EditorTab;
 import ca.corbett.crypttext.ui.MainWindow;
 import ca.corbett.extras.EnhancedAction;
@@ -7,7 +8,6 @@ import ca.corbett.extras.MessageUtil;
 
 import java.awt.Component;
 import java.awt.event.ActionEvent;
-import java.io.IOException;
 import java.util.logging.Logger;
 
 /**
@@ -42,7 +42,11 @@ public class SaveAsAction extends EnhancedAction {
             // The file path and/or name has changed, so make sure our title bar is updated:
             MainWindow.getInstance().updateTitleBar();
         }
-        catch (IOException ioe) {
+        catch (VetoException ignored) {
+            // An extension vetoed the save!
+            // Just skip it - EditorTab has already logged the veto (indirectly via TextManager).
+        }
+        catch (Exception ioe) {
             getMessageUtil().error("Error saving file: " + ioe.getMessage(), ioe);
         }
     }
