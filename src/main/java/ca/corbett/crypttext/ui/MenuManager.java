@@ -116,10 +116,8 @@ public class MenuManager {
         // Open actions:
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getNewTabAction()));
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getOpenFileAction()));
-        recentFilesMenu = new JMenu();
-        recentFilesMenu.setText("Recent files");
+        recentFilesMenu = new JMenu("Recent files");
         fileMenu.add(recentFilesMenu);
-
         // Save actions:
         fileMenu.addSeparator();
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getFileSaveAction()));
