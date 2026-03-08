@@ -294,7 +294,7 @@ Default: Ctrl+N (new), Ctrl+O (open), Ctrl+S (save), Ctrl+D (crypt), F7 (forget)
 - **INSTALL_DIR**: Installation directory (null if not installed via installer)
 - **SETTINGS_DIR**: `~/.CryptText/` (user settings)
 - **EXTENSIONS_DIR**: `~/.CryptText/extensions/` (extension jars)
-- **UPDATE_SOURCES_FILE**: `update_sources.json` (optional, for extension discovery)
+- **UPDATE_SOURCES_FILE**: `~/.CryptText/update_sources.json` (optional, for extension discovery)
 
 ### Resource Files
 - **logging.properties** - Java logging configuration
