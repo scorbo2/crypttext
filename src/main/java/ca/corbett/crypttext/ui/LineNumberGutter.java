@@ -1,6 +1,8 @@
 package ca.corbett.crypttext.ui;
 
 
+import ca.corbett.crypttext.AppConfig;
+
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
@@ -30,11 +32,11 @@ public class LineNumberGutter extends JPanel implements DocumentListener, CaretL
 
     private final JTextPane textPane;
     private static final int PADDING = 5;
-    private Font lineNumberFont; // issue #33 will make this customizable... later
+    private Font lineNumberFont;
 
     public LineNumberGutter(JTextPane textPane) {
         this.textPane = textPane;
-        lineNumberFont = textPane.getFont().deriveFont(Font.PLAIN);
+        lineNumberFont = AppConfig.getInstance().getGutterFont();
         setBackground(new Color(240, 240, 240)); // hard-coding colors until we get proper themes in place
         setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Color.LIGHT_GRAY));
         textPane.getDocument().addDocumentListener(this);
@@ -46,6 +48,19 @@ public class LineNumberGutter extends JPanel implements DocumentListener, CaretL
                 repaint();
             }
         });
+    }
+
+    /**
+     * Updates the font used for displaying line numbers.
+     * If null is supplied, we'll revert to the default provided by AppConfig.
+     */
+    public void setLineNumberFont(Font newFont) {
+        if (newFont == null) {
+            newFont = AppConfig.DEFAULT_GUTTER_FONT;
+        }
+        this.lineNumberFont = newFont;
+        revalidate();
+        repaint();
     }
 
     private int getLineCount() {

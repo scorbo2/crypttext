@@ -19,12 +19,14 @@ import ca.corbett.extras.io.KeyStrokeManager;
 import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.DirectoryProperty;
+import ca.corbett.extras.properties.FontProperty;
 import ca.corbett.extras.properties.IntegerProperty;
 import ca.corbett.extras.properties.KeyStrokeProperty;
 import ca.corbett.extras.properties.LookAndFeelProperty;
 import com.formdev.flatlaf.FlatLightLaf;
 
 import javax.swing.Action;
+import java.awt.Font;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +63,9 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
      */
     public static final String KEYSTROKE_PREFIX = "Keystrokes.";
 
+    public static final Font DEFAULT_EDITOR_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 14);
+    public static final Font DEFAULT_GUTTER_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
+
     private static final String KEY_NEW_TAB = KEYSTROKE_PREFIX + "General.newTab";
     private static final String KEY_OPEN_FILE = KEYSTROKE_PREFIX + "General.openFile";
     private static final String KEY_SAVE_FILE = KEYSTROKE_PREFIX + "General.saveFile";
@@ -86,6 +91,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private DirectoryProperty lastBrowseDirProp;
     private BooleanProperty restoreTabsOnStartupProp;
     private BooleanProperty showLineNumbersProp;
+    private FontProperty editorFontProp;
+    private FontProperty gutterFontProp;
 
     // These will be used in the menu bar and with KeyStrokeManager:
     // (they could also be added to buttons or popup menus as needed)
@@ -271,6 +278,20 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     }
 
     /**
+     * Returns the configured editor font.
+     */
+    public Font getEditorFont() {
+        return editorFontProp.getFont();
+    }
+
+    /**
+     * Returns the configured "gutter" font (for showing line numbers).
+     */
+    public Font getGutterFont() {
+        return gutterFontProp.getFont();
+    }
+
+    /**
      * This is where you can define the configuration properties for your application.
      * These properties will be displayed in the PropertiesDialog, and persisted
      * to the properties file automatically.
@@ -314,6 +335,39 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         // And we can set up our keyboard shortcuts while we're at it:
         props.addAll(createKeyboardProperties());
 
+        // And now our various property categories:
+        props.addAll(buildEditorProperties());
+        props.addAll(buildEditorTabProperties());
+        props.addAll(buildHiddenProperties());
+
+        return props;
+    }
+
+    /**
+     * Builds and returns properties related to the editor itself - appearance and behavior.
+     */
+    private List<AbstractProperty> buildEditorProperties() {
+        List<AbstractProperty> props = new ArrayList<>();
+
+        editorFontProp = new FontProperty("UI.Editor.editorFont",
+                                          "Editor Font:",
+                                          DEFAULT_EDITOR_FONT);
+        props.add(editorFontProp);
+
+        gutterFontProp = new FontProperty("UI.Editor.gutterFont",
+                                          "Gutter Font:",
+                                          DEFAULT_GUTTER_FONT);
+        props.add(gutterFontProp);
+
+        return props;
+    }
+
+    /**
+     * Builds and returns properties related to the editor tabs.
+     */
+    private List<AbstractProperty> buildEditorTabProperties() {
+        List<AbstractProperty> props = new ArrayList<>();
+
         enableTabLockIconsProp = new BooleanProperty("UI.Editor tabs.showLockIcons",
                                                      "Show lock icons on editor tabs",
                                                      true);
@@ -339,6 +393,16 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
                                                        true);
         props.add(restoreTabsOnStartupProp);
 
+        return props;
+    }
+
+    /**
+     * Builds and returns all hidden properties - these are internal properties
+     * that the application itself will use without ever directly exposing to the user.
+     */
+    private List<AbstractProperty> buildHiddenProperties() {
+        List<AbstractProperty> props = new ArrayList<>();
+
         // Hidden props (persisted but never directly shown to the user):
         lastBrowseDirProp = new DirectoryProperty("hidden.props.lastBrowseDirectory",
                                                   "Last Browse Directory:",
@@ -350,6 +414,12 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         return props;
     }
 
+    /**
+     * Builds all keyboard shortcut properties.
+     * Note that we are using effectively singleton Action instances.
+     * This allows the KeyStrokeManager to modify the accelerator
+     * associated with the Action when the keyboard shortcut is changed.
+     */
     private List<AbstractProperty> createKeyboardProperties() {
         List<AbstractProperty> props = new ArrayList<>();
 
