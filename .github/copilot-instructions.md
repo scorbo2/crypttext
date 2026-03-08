@@ -418,7 +418,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
 ### Encryption
 - Passwords are memory-sensitive
 - Decryption failures = wrong password OR corrupted data
-- AES-GCM prevents tampering detection
+- AES-GCM provides authenticated encryption to detect tampering
 - Argon2 intentionally slow for security
 
 ### Extension Development
