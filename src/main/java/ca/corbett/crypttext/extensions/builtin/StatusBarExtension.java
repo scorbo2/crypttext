@@ -57,7 +57,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
     private final LaFChangeListener lafChangeListener = new LaFChangeListener();
 
     public StatusBarExtension() {
-        extInfo = new AppExtensionInfo.Builder("Status bar")
+        extInfo = new AppExtensionInfo.Builder("StatusBar")
                 .setVersion(Version.VERSION)
                 .setTargetAppName(Version.NAME)
                 .setTargetAppVersion(Version.VERSION)
@@ -182,7 +182,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
          */
         public StatusBarComponent() {
             setLayout(new BorderLayout());
-            setName("Status bar"); // In case we are added to a JTabbedPane
+            setName("StatusBar"); // In case we are added to a JTabbedPane
 
             // Caret position info on the right:
             JPanel wrapperPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 4));
