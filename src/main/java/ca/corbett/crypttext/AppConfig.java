@@ -349,12 +349,12 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private List<AbstractProperty> buildEditorProperties() {
         List<AbstractProperty> props = new ArrayList<>();
 
-        editorFontProp = new FontProperty("UI.Editor.Editor font",
+        editorFontProp = new FontProperty("UI.Editor.editorFont",
                                           "Editor Font:",
                                           DEFAULT_EDITOR_FONT);
         props.add(editorFontProp);
 
-        gutterFontProp = new FontProperty("UI.Editor.Gutter font",
+        gutterFontProp = new FontProperty("UI.Editor.gutterFont",
                                           "Gutter Font:",
                                           DEFAULT_GUTTER_FONT);
         props.add(gutterFontProp);
