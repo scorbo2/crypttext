@@ -98,7 +98,7 @@ crypttext/
 
 ## 3. Build System
 
-**Build Tool**: Maven 3.9.12+  
+**Build Tool**: Maven 3.x  
 **Java Version**: 17+
 
 ### Key Build Commands
