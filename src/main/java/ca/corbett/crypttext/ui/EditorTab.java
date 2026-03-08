@@ -405,14 +405,9 @@ public class EditorTab extends JPanel implements UIReloadable {
         EncryptedText encrypted = handleEncrypt(getMemoryContents(), getCryptMetadata());
         if (encrypted != null) {
             // User successfully encrypted the text, so update our in-memory contents:
-            eventsEnabled = false; // prevent firing events during this programmatic text change
-            try {
-                setMemoryContents(encrypted.getText());
-                setCryptMetadata(encrypted.getCryptMetadata()); // update to match the new scheme and/or password
-            }
-            finally {
-                eventsEnabled = true;
-            }
+            // (note: we don't disable event handling here... extensions may want to know our content has changed)
+            setMemoryContents(encrypted.getText());
+            setCryptMetadata(encrypted.getCryptMetadata()); // update to match the new scheme and/or password
 
             // Unlike decryptInMemory(), we DO want to mark ourselves as dirty here,
             // even if we were originally loaded from an encrypted file, because every
@@ -448,13 +443,8 @@ public class EditorTab extends JPanel implements UIReloadable {
         String decrypted = handleDecrypt(getMemoryContents());
         if (decrypted != null) {
             // User successfully decrypted the text, so update our in-memory contents:
-            eventsEnabled = false; // prevent firing events during this programmatic text change
-            try {
-                setMemoryContents(decrypted);
-            }
-            finally {
-                eventsEnabled = true;
-            }
+            // (note: we don't disable event handling here... extensions may want to know our content has changed)
+            setMemoryContents(decrypted);
 
             // If we weren't dirty before, then we still aren't.
             // All we did was decrypt. Our in-memory contents don't match our disk contents,
@@ -527,6 +517,9 @@ public class EditorTab extends JPanel implements UIReloadable {
      * Invoked internally to mark this editor tab as dirty (has unsaved changes).
      */
     private void markDirty() {
+        if (!eventsEnabled) {
+            return; // don't mark dirty if we're in the middle of a programmatic text change
+        }
         isDirty = true;
         tabHeader.updateLabel(name); // adds the visual dirty indicator
         tabHeader.resetIcon(); // swap icon colors for more visual indication of dirty state
@@ -758,10 +751,6 @@ public class EditorTab extends JPanel implements UIReloadable {
     }
 
     private void firePositionChangedEvent(CaretEvent caretEvent) {
-        if (!eventsEnabled) {
-            return; // don't fire events if we're in the middle of a programmatic text change
-        }
-
         // If no one is listening, don't bother:
         if (positionListeners.isEmpty()) {
             return;
@@ -800,10 +789,6 @@ public class EditorTab extends JPanel implements UIReloadable {
     }
 
     private void fireContentChangedEvent() {
-        if (!eventsEnabled) {
-            return; // don't fire events if we're in the middle of a programmatic text change
-        }
-
         // If no one is listening, don't bother:
         if (contentChangeListeners.isEmpty()) {
             return;
@@ -831,7 +816,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         @Override
         public void insertUpdate(DocumentEvent e) {
             if (!eventsEnabled) {
-                return; // don't mark dirty if we're in the middle of a programmatic text change
+                return; // don't fire events if we're in the middle of a programmatic change
             }
             markDirty();
             fireContentChangedEvent();
@@ -840,7 +825,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         @Override
         public void removeUpdate(DocumentEvent e) {
             if (!eventsEnabled) {
-                return; // don't mark dirty if we're in the middle of a programmatic text change
+                return; // don't fire events if we're in the middle of a programmatic change
             }
             markDirty();
             fireContentChangedEvent();
@@ -849,7 +834,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         @Override
         public void changedUpdate(DocumentEvent e) {
             if (!eventsEnabled) {
-                return; // don't mark dirty if we're in the middle of a programmatic text change
+                return; // don't fire events if we're in the middle of a programmatic change
             }
             markDirty();
             fireContentChangedEvent();
