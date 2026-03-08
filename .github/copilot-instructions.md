@@ -356,7 +356,8 @@ To add CI/CD, create:
 - **Installation**: Linux installer tarball or Maven source build
 - **User Guide**: Editor usage, encryption workflow, configuration
 - **Features**: Look & Feel, editor settings, tab settings, keyboard shortcuts
-- **Built-in Extensions**: StatusBar, DirTree, Log Console
+- **Built-in Extensions**: StatusBar, DirTree
+- **Built-in Windows/Actions**: Log Console
 - **Extension Development**: Reference to swing-extras API
 - **Repository**: GitHub issues for bugs/features
 - **License**: MIT License
