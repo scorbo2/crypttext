@@ -140,8 +140,6 @@ public class MenuManager {
     private void rebuildEditMenu() {
         editMenu.removeAll();
 
-        // TODO add your "Edit" menu items here.
-
         // Add any items to this list from our extensions, if any:
         List<JMenuItem> extensionItems = CryptTextExtensionManager.getInstance().getMenuItems("Edit");
         if (!extensionItems.isEmpty()) {
@@ -174,8 +172,6 @@ public class MenuManager {
 
     private void rebuildHelpMenu() {
         helpMenu.removeAll();
-
-        // TODO add your "Help" menu items here.
 
         // Add any items to this list from our extensions, if any:
         List<JMenuItem> items = CryptTextExtensionManager.getInstance().getMenuItems("Help");

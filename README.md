@@ -16,7 +16,9 @@ the underlying encryption details.
 
 If you are running on Linux, and have Java 17 or higher installed, you can download the installer tarball:
 
-- [CryptText Installer](TODO insert download link before V1 release)
+- [CryptText Installer](https://www.corbett.ca/apps/CryptText-1.0.tar.gz)
+- Size: 17MB
+- Sha256: `4283a16d6baef9968c9496b87719ba8c46234a9eca09ed477b738148680486e8`
 
 This is the best option, as you get an installer script that sets everything up for you:
 
