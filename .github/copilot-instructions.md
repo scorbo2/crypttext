@@ -306,7 +306,7 @@ Default: Ctrl+N (new), Ctrl+O (open), Ctrl+S (save), Ctrl+D (crypt), F7 (forget)
 
 ### Design Patterns Used
 
-1. **Singleton**: MainWindow, AppConfig, CryptTextExtensionManager, Version
+1. **Singleton**: MainWindow, AppConfig, CryptTextExtensionManager
    - Private constructor + static getInstance() method
    
 2. **Observer/Listener**: Text events, UI updates
