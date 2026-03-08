@@ -1,17 +1,12 @@
 package ca.corbett.crypttext.ui.actions;
 
 import ca.corbett.crypttext.AppConfig;
-import ca.corbett.crypttext.VetoException;
-import ca.corbett.crypttext.text.Text;
 import ca.corbett.crypttext.ui.MainWindow;
 import ca.corbett.extras.EnhancedAction;
-import ca.corbett.extras.MessageUtil;
 
 import javax.swing.JFileChooser;
 import java.awt.event.ActionEvent;
 import java.io.File;
-import java.io.IOException;
-import java.util.logging.Logger;
 
 /**
  * Browses for a file to open and loads it in a new editor tab.
@@ -19,9 +14,6 @@ import java.util.logging.Logger;
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
 public class OpenFileAction extends EnhancedAction {
-
-    private static final Logger log = Logger.getLogger(OpenFileAction.class.getName());
-    private MessageUtil messageUtil;
 
     public OpenFileAction() {
         // No icon for now, maybe later
@@ -35,25 +27,7 @@ public class OpenFileAction extends EnhancedAction {
         if (result == JFileChooser.APPROVE_OPTION) {
             File selectedFile = fileChooser.getSelectedFile();
             AppConfig.getInstance().setLastBrowseDirectory(selectedFile.getParentFile());
-            try {
-                Text text = MainWindow.getInstance().getTextManager().fromFile(selectedFile);
-                MainWindow.getInstance().getEditorTabPane().clearIfScratch();
-                MainWindow.getInstance().getEditorTabPane().newTextTab(text, selectedFile.getName());
-            }
-            catch (VetoException ignored) {
-                // An extension vetoed the load!
-                // Just skip it - TextManager has already logged the veto.
-            }
-            catch (IOException ioe) {
-                getMessageUtil().error("Error opening file: " + ioe.getMessage(), ioe);
-            }
+            MainWindow.getInstance().getEditorTabPane().newTextTab(selectedFile);
         }
-    }
-
-    private MessageUtil getMessageUtil() {
-        if (messageUtil == null) {
-            messageUtil = new MessageUtil(MainWindow.getInstance(), log);
-        }
-        return messageUtil;
     }
 }

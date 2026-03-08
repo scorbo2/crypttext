@@ -8,10 +8,14 @@ import java.util.List;
 /**
  * A configurable FileFilter implementation that accepts files with certain extensions.
  * You can set an optional description for the filter with setDescription().
+ * <p>
+ *     Side note: how bizarre is it that there's a javax.swing.filechooser.FileFilter and a java.io.FileFilter,
+ *     and they are completely separate interfaces with no common parent?
+ * </p>
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
-public class TextFileFilter extends FileFilter {
+public class TextFileFilter extends FileFilter implements java.io.FileFilter {
 
     public static final TextFileFilter DEFAULT = new TextFileFilter(List.of("txt"));
 
@@ -41,8 +45,9 @@ public class TextFileFilter extends FileFilter {
     @Override
     public boolean accept(File f) {
         boolean anyMatch = extensions.isEmpty();
+        String fName = f.getName().toLowerCase();
         for (String ext : extensions) {
-            if (f.getName().toLowerCase().endsWith("." + ext.toLowerCase())) {
+            if (fName.endsWith("." + ext.toLowerCase())) {
                 anyMatch = true;
                 break;
             }
