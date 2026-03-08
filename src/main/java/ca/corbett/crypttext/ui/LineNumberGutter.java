@@ -2,6 +2,7 @@ package ca.corbett.crypttext.ui;
 
 
 import ca.corbett.crypttext.AppConfig;
+import ca.corbett.extras.LookAndFeelManager;
 
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
@@ -33,12 +34,11 @@ public class LineNumberGutter extends JPanel implements DocumentListener, CaretL
     private final JTextPane textPane;
     private static final int PADDING = 5;
     private Font lineNumberFont;
+    private Color lineNumberColor;
 
     public LineNumberGutter(JTextPane textPane) {
         this.textPane = textPane;
         lineNumberFont = AppConfig.getInstance().getGutterFont();
-        setBackground(new Color(240, 240, 240)); // hard-coding colors until we get proper themes in place
-        setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Color.LIGHT_GRAY));
         textPane.getDocument().addDocumentListener(this);
         textPane.addCaretListener(this);
         // Also revalidate on component resize
@@ -48,6 +48,23 @@ public class LineNumberGutter extends JPanel implements DocumentListener, CaretL
                 repaint();
             }
         });
+        updateColors();
+    }
+
+    /**
+     * Invoke this to force an update of our background and foreground and border
+     * colors based on whatever is currently set in application preferences.
+     */
+    public void updateColors() {
+        Color bg = AppConfig.getInstance().getGutterBackgroundColor();
+        Color fg = AppConfig.getInstance().getGutterForegroundColor();
+        setBackground(bg);
+        lineNumberColor = fg;
+        Color borderColor = LookAndFeelManager.isDark()
+                ? bg.brighter()
+                : bg.darker();
+        setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, borderColor));
+        repaint();
     }
 
     /**
@@ -84,7 +101,7 @@ public class LineNumberGutter extends JPanel implements DocumentListener, CaretL
         Graphics2D g2 = (Graphics2D)g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setFont(lineNumberFont);
-        g2.setColor(Color.GRAY);
+        g2.setColor(lineNumberColor);
 
         FontMetrics fm = g2.getFontMetrics();
         Rectangle clip = g.getClipBounds();

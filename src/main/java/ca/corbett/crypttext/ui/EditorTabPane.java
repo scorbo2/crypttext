@@ -6,9 +6,11 @@ import ca.corbett.crypttext.VetoException;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 import ca.corbett.crypttext.text.Text;
 import ca.corbett.crypttext.text.TextManager;
+import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.MessageUtil;
 
 import javax.swing.JTabbedPane;
+import javax.swing.SwingUtilities;
 import java.awt.Component;
 import java.io.File;
 import java.io.IOException;
@@ -47,6 +49,7 @@ public class EditorTabPane extends JTabbedPane {
 
     public EditorTabPane() {
         this.textManager = buildTextManager();
+        LookAndFeelManager.addChangeListener(e -> SwingUtilities.updateComponentTreeUI(this));
     }
 
     /**
