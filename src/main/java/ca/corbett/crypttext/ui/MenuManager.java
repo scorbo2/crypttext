@@ -127,12 +127,13 @@ public class MenuManager {
         // Add any items to this list from our extensions, if any:
         List<JMenuItem> items = CryptTextExtensionManager.getInstance().getMenuItems("File");
         if (!items.isEmpty()) {
+            fileMenu.addSeparator();
             for (JMenuItem item : items) {
                 fileMenu.add(item);
             }
-            fileMenu.addSeparator();
         }
 
+        fileMenu.addSeparator();
         fileMenu.add(new JMenuItem(AppConfig.getInstance().getExitAction()));
     }
 
