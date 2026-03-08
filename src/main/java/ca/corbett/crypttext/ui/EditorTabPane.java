@@ -152,6 +152,7 @@ public class EditorTabPane extends JTabbedPane {
                         log.log(Level.WARNING, "Error cleaning up TextManager after clearing scratch tab for file: "
                                 + editorTab.getDiskContents().getSourceFile(), ioe);
                     }
+                    editorTab.dispose();
                 }
                 removeTabAt(0);
                 editorTabs.clear();

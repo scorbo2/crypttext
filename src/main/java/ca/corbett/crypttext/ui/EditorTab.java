@@ -18,6 +18,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
+import javax.swing.SwingUtilities;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -101,6 +102,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         this.ownerPane = ownerPane;
         this.name = name;
         textPane = new JTextPane();
+        textPane.setFont(AppConfig.getInstance().getEditorFont());
         textPane.addCaretListener(this::firePositionChangedEvent);
         setLayout(new BorderLayout());
         JPanel wrapperPanel = new JPanel(new BorderLayout());
@@ -207,8 +209,15 @@ public class EditorTab extends JPanel implements UIReloadable {
     public void close() {
         if (ownerPane.closeTab(this)) {
             // Our request to close the tab was not canceled or vetoed, so we are actually closing:
-            UIReloadAction.getInstance().unregisterReloadable(this); // stop listening
+            dispose();
         }
+    }
+
+    /**
+     * Performs any necessary cleanup when this tab is closed, such as unregistering from listeners.
+     */
+    public void dispose() {
+        UIReloadAction.getInstance().unregisterReloadable(this); // stop listening
     }
 
     /**
@@ -397,9 +406,13 @@ public class EditorTab extends JPanel implements UIReloadable {
         if (encrypted != null) {
             // User successfully encrypted the text, so update our in-memory contents:
             eventsEnabled = false; // prevent firing events during this programmatic text change
-            setMemoryContents(encrypted.getText());
-            setCryptMetadata(encrypted.getCryptMetadata()); // update to match the new scheme and/or password
-            eventsEnabled = true;
+            try {
+                setMemoryContents(encrypted.getText());
+                setCryptMetadata(encrypted.getCryptMetadata()); // update to match the new scheme and/or password
+            }
+            finally {
+                eventsEnabled = true;
+            }
 
             // Unlike decryptInMemory(), we DO want to mark ourselves as dirty here,
             // even if we were originally loaded from an encrypted file, because every
@@ -436,8 +449,12 @@ public class EditorTab extends JPanel implements UIReloadable {
         if (decrypted != null) {
             // User successfully decrypted the text, so update our in-memory contents:
             eventsEnabled = false; // prevent firing events during this programmatic text change
-            setMemoryContents(decrypted);
-            eventsEnabled = true;
+            try {
+                setMemoryContents(decrypted);
+            }
+            finally {
+                eventsEnabled = true;
+            }
 
             // If we weren't dirty before, then we still aren't.
             // All we did was decrypt. Our in-memory contents don't match our disk contents,
@@ -517,11 +534,28 @@ public class EditorTab extends JPanel implements UIReloadable {
 
     /**
      * Invoked when the user has changed application settings and the UI must reload.
-     * Our "show line numbers" option may have changed, so let's update accordingly.
+     * Our cosmetic options may have changed, so let's update accordingly.
      */
     @Override
     public void reloadUI() {
-        scrollPane.setRowHeaderView(AppConfig.getInstance().isShowLineNumbers() ? gutter : null);
+        // Weirdly, some of these calls will trigger a change event.
+        // Example: textPane.setFont() schedules a changedUpdate via SwingUtilities.invokeLater
+        // deep inside DefaultStyledDocument.styleChanged. That means the changedUpdate fires
+        // AFTER our finally block has already re-enabled events, causing a spurious markDirty().
+        // The fix is to re-enable events inside our own invokeLater, so it is queued AFTER
+        // the style-change event and will therefore run after eventsEnabled has been checked.
+        eventsEnabled = false;
+        try {
+            scrollPane.setRowHeaderView(AppConfig.getInstance().isShowLineNumbers() ? gutter : null);
+            textPane.setFont(AppConfig.getInstance().getEditorFont());
+            gutter.setLineNumberFont(AppConfig.getInstance().getGutterFont());
+        }
+        finally {
+            SwingUtilities.invokeLater(() -> eventsEnabled = true);
+        }
+
+        // Note: our EditorTabHeader is updated via MainWindow's reloadUI handler,
+        // which speaks directly to our ownerPane to update all tabs at once.
     }
 
     /**
@@ -796,18 +830,27 @@ public class EditorTab extends JPanel implements UIReloadable {
     private class DocListener implements DocumentListener {
         @Override
         public void insertUpdate(DocumentEvent e) {
+            if (!eventsEnabled) {
+                return; // don't mark dirty if we're in the middle of a programmatic text change
+            }
             markDirty();
             fireContentChangedEvent();
         }
 
         @Override
         public void removeUpdate(DocumentEvent e) {
+            if (!eventsEnabled) {
+                return; // don't mark dirty if we're in the middle of a programmatic text change
+            }
             markDirty();
             fireContentChangedEvent();
         }
 
         @Override
         public void changedUpdate(DocumentEvent e) {
+            if (!eventsEnabled) {
+                return; // don't mark dirty if we're in the middle of a programmatic text change
+            }
             markDirty();
             fireContentChangedEvent();
         }
