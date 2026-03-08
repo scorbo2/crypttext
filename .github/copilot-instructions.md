@@ -407,7 +407,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
 - Integrates with extension manager
 - Properties loaded from `~/.CryptText/CryptText.props`
 
-**Configuration Flow**: Main.main() → AppConfig.getInstance().load() → Reads properties file → Creates/updates actions → Coordinates with extensions
+**Configuration Flow**: Main.main() → Load and activate extensions → AppConfig.getInstance().load() → Read properties file and create/update actions → Switch Look & Feel on EDT → Coordinate with extensions
 
 ## 15. Important Notes for Development
 
