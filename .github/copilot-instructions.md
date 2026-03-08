@@ -84,7 +84,7 @@ crypttext/
 │   │           ├── DirTreeExtension.java
 │   │           ├── StatusBarExtension.java
 │   │           └── TestExtension.java
-│   ├── resources/ca/corbett/crypttext/
+│   ├── main/resources/ca/corbett/crypttext/
 │   │   ├── logging.properties
 │   │   ├── file_header.txt
 │   │   ├── ReleaseNotes.txt
