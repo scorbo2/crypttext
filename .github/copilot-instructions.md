@@ -425,12 +425,12 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
 ### Extension Development
 - Loaded from jar files in extensions directory
 - Load order matters (alphabetically by default)
-- Can veto file operations
+- Can veto file operations via `CryptTextExtension.fileWillLoad/fileWillSave`
 - Have access to MainWindow static methods
 
 ### Listener Pattern
 - Thread-safe (CopyOnWriteArrayList)
-- Extensions can subscribe to TextWillLoad/TextWillSave for veto hooks
+- `CryptTextExtension.fileWillLoad/fileWillSave` provide extension veto hooks (internally backed by `TextWillLoad/TextWillSave` in `TextManager` via `EditorTabPane.buildTextManager()`)
 - UI listeners on EDT, data listeners may be cross-thread
 
 ### File I/O
