@@ -282,10 +282,10 @@ Properties file: `~/.CryptText/CryptText.props`
 - `UI.Editor.{bgColor,fgColor,gutterBgColor,gutterFgColor}` - Colors
 
 **Tab Settings**
-- `UI.Tabs.showLockIcons` - Show padlock on encrypted files
-- `UI.Tabs.iconSize` - Padlock icon size
-- `UI.Tabs.closeLastTabExits` - Exit when last tab closed
-- `UI.Tabs.restoreOnStartup` - Restore tabs from last session
+- `UI.Editor tabs.showLockIcons` - Show padlock on encrypted files
+- `UI.Editor tabs.tabIconSize` - Padlock icon size
+- `UI.Editor tabs.closeLastTabExits` - Exit when last tab closed
+- `UI.Editor tabs.restoreTabsOnStartup` - Restore tabs from last session
 
 **Keyboard Shortcuts** (Keystrokes.*)
 Default: Ctrl+N (new), Ctrl+O (open), Ctrl+S (save), Ctrl+D (crypt), F7 (forget), Ctrl+P (properties), Ctrl+E (extensions), Ctrl+L (log), Ctrl+A (about), Ctrl+Q (exit)
