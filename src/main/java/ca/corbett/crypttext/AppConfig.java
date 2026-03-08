@@ -101,6 +101,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private LookAndFeelProperty lookAndFeelProp;
     private BooleanProperty enableSingleInstance;
     private BooleanProperty showFullPathInTitleProp;
+    private IntegerProperty recentFilesLimitProp;
     private BooleanProperty enableTabLockIconsProp;
     private IntegerProperty tabIconSizeProp;
     private BooleanProperty closeLastTabExitsProp;
@@ -281,6 +282,14 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     }
 
     /**
+     * Returns the limit on the number of recent files to remember.
+     * This might be 0! That means the feature is effectively disabled.
+     */
+    public int getRecentFilesLimit() {
+        return recentFilesLimitProp.getValue();
+    }
+
+    /**
      * Gets the last directory that was browsed to in a file chooser.
      * This can be used to initialize the next file chooser, for
      * a more consistent user experience.
@@ -429,6 +438,11 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
                                                       "Show full file path in title bar",
                                                       true);
         props.add(showFullPathInTitleProp);
+
+        recentFilesLimitProp = new IntegerProperty("UI.General.recentFilesLimit",
+                                                   "Recent files:",
+                                                   RecentFilesManager.DEFAULT_LIMIT, 0, 20, 1);
+        props.add(recentFilesLimitProp);
 
         // Let's create all our actions:
         newTabAction = new NewTabAction();
