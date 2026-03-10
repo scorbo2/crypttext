@@ -13,16 +13,24 @@ import ca.corbett.crypttext.ui.actions.UIReloadAction;
 import ca.corbett.extras.MessageUtil;
 import ca.corbett.extras.ScrollUtil;
 
+import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.event.UndoableEditListener;
+import javax.swing.undo.UndoManager;
 import java.awt.BorderLayout;
+import java.awt.Toolkit;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -74,6 +82,8 @@ public class EditorTab extends JPanel implements UIReloadable {
     private final JScrollPane scrollPane;
     private final LineNumberGutter gutter;
     private final EditorTabHeader tabHeader;
+    private final UndoManager undoManager;
+    private final UndoableEditListener undoableEditListener;
     private String name;
     private Text diskContents;
     private CryptMetadata cryptMetadata;
@@ -115,6 +125,25 @@ public class EditorTab extends JPanel implements UIReloadable {
         textPane.setText(this.diskContents.getText()); // initial value
         this.cryptMetadata = generateCryptMetadata();
         textPane.getDocument().addDocumentListener(new DocListener());
+        undoManager = new UndoManager();
+        undoManager.setLimit(100);
+        undoableEditListener = e -> {
+            if (eventsEnabled) {
+                undoManager.addEdit(e.getEdit());
+            }
+        };
+        textPane.getDocument().addUndoableEditListener(undoableEditListener);
+        KeyStroke undoKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Z,
+                                                         Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx());
+        textPane.getInputMap(JComponent.WHEN_FOCUSED).put(undoKeyStroke, "undo");
+        textPane.getActionMap().put("undo", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (undoManager.canUndo()) {
+                    undoManager.undo();
+                }
+            }
+        });
         isDirty = false;
         tabHeader = new EditorTabHeader(this, name);
         UIReloadAction.getInstance().registerReloadable(this);
@@ -219,6 +248,7 @@ public class EditorTab extends JPanel implements UIReloadable {
      */
     public void dispose() {
         UIReloadAction.getInstance().unregisterReloadable(this); // stop listening
+        textPane.getDocument().removeUndoableEditListener(undoableEditListener);
     }
 
     /**
