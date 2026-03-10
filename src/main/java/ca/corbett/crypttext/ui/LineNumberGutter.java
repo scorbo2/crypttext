@@ -188,8 +188,9 @@ public class LineNumberGutter extends JPanel implements DocumentListener, CaretL
         Element root = textPane.getDocument().getDefaultRootElement();
         int clamped = Math.max(0, Math.min(lineIndex, root.getElementCount() - 1));
         Element lineElement = root.getElement(clamped);
+        int docLength = textPane.getDocument().getLength();
         textPane.setSelectionStart(lineElement.getStartOffset());
-        textPane.setSelectionEnd(lineElement.getEndOffset());
+        textPane.setSelectionEnd(Math.min(lineElement.getEndOffset(), docLength));
     }
 
     /**
@@ -200,8 +201,9 @@ public class LineNumberGutter extends JPanel implements DocumentListener, CaretL
         int lineCount = root.getElementCount();
         int startLine = Math.max(0, Math.min(fromLine, toLine));
         int endLine = Math.min(lineCount - 1, Math.max(fromLine, toLine));
+        int docLength = textPane.getDocument().getLength();
         int start = root.getElement(startLine).getStartOffset();
-        int end = root.getElement(endLine).getEndOffset();
+        int end = Math.min(root.getElement(endLine).getEndOffset(), docLength);
         textPane.setSelectionStart(start);
         textPane.setSelectionEnd(end);
     }
