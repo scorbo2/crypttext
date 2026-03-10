@@ -12,9 +12,11 @@ import ca.corbett.crypttext.ui.actions.LogConsoleAction;
 import ca.corbett.crypttext.ui.actions.NewTabAction;
 import ca.corbett.crypttext.ui.actions.OpenFileAction;
 import ca.corbett.crypttext.ui.actions.PropertiesAction;
+import ca.corbett.crypttext.ui.actions.RedoAction;
 import ca.corbett.crypttext.ui.actions.SaveAction;
 import ca.corbett.crypttext.ui.actions.SaveAsAction;
 import ca.corbett.crypttext.ui.actions.SaveUnencryptedAction;
+import ca.corbett.crypttext.ui.actions.UndoAction;
 import ca.corbett.extensions.AppProperties;
 import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.gradient.ColorSelectionType;
@@ -87,6 +89,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private static final String KEY_SAVE_FILE = KEYSTROKE_PREFIX + "General.saveFile";
     private static final String KEY_SAVE_FILE_AS = KEYSTROKE_PREFIX + "General.saveFileAs";
     private static final String KEY_SAVE_UNENCRYPTED = KEYSTROKE_PREFIX + "General.saveUnencrypted";
+    private static final String KEY_UNDO = KEYSTROKE_PREFIX + "General.undo";
+    private static final String KEY_REDO = KEYSTROKE_PREFIX + "General.redo";
     private static final String KEY_CRYPT = KEYSTROKE_PREFIX + "General.crypt";
     private static final String KEY_FORGET_PASSWORD = KEYSTROKE_PREFIX + "General.forgetPassword";
     private static final String KEY_PROPERTIES = KEYSTROKE_PREFIX + "General.properties";
@@ -102,6 +106,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private BooleanProperty enableSingleInstance;
     private BooleanProperty showFullPathInTitleProp;
     private IntegerProperty recentFilesLimitProp;
+    private IntegerProperty undoLimitProp;
     private BooleanProperty enableTabLockIconsProp;
     private IntegerProperty tabIconSizeProp;
     private BooleanProperty closeLastTabExitsProp;
@@ -127,6 +132,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private Action saveFileAction;
     private Action saveFileAsAction;
     private Action saveUnencryptedAction;
+    private Action undoAction;
+    private Action redoAction;
     private Action cryptAction;
     private Action forgetPasswordAction;
     private Action propertiesAction;
@@ -196,6 +203,14 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         return saveUnencryptedAction;
     }
 
+    public Action getUndoAction() {
+        return undoAction;
+    }
+
+    public Action getRedoAction() {
+        return redoAction;
+    }
+
     public Action getCryptAction() {
         return cryptAction;
     }
@@ -237,6 +252,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_SAVE_FILE));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_SAVE_FILE_AS));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_SAVE_UNENCRYPTED));
+        keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_UNDO));
+        keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_REDO));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_CRYPT));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_FORGET_PASSWORD));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_PROPERTIES));
@@ -313,6 +330,13 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
      */
     public boolean isRestoreTabsOnStartup() {
         return restoreTabsOnStartupProp.getValue();
+    }
+
+    /**
+     * Returns the number of undo levels to keep in the undo stack for each editor tab.
+     */
+    public int getUndoLimit() {
+        return undoLimitProp.getValue();
     }
 
     /**
@@ -450,6 +474,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         saveFileAction = new SaveAction();
         saveFileAsAction = new SaveAsAction();
         saveUnencryptedAction = new SaveUnencryptedAction();
+        undoAction = new UndoAction();
+        redoAction = new RedoAction();
         cryptAction = new CryptAction();
         forgetPasswordAction = new ForgetPasswordAction();
         propertiesAction = new PropertiesAction();
@@ -572,6 +598,11 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
                                                        true);
         props.add(restoreTabsOnStartupProp);
 
+        undoLimitProp = new IntegerProperty("UI.Editor tabs.undoLimit",
+                                            "Undo levels:",
+                                            100, 0, 1000, 10);
+        props.add(undoLimitProp);
+
         return props;
     }
 
@@ -621,6 +652,14 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         props.add(new KeyStrokeProperty(KEY_SAVE_UNENCRYPTED, "Save Unencrypted:",
                                         KeyStrokeManager.parseKeyStroke("Ctrl+Shift+1"), // "!" for unsafe save.
                                         saveUnencryptedAction)
+                          .setAllowBlank(true));
+        props.add(new KeyStrokeProperty(KEY_UNDO, "Undo:",
+                                        KeyStrokeManager.parseKeyStroke("Ctrl+Z"),
+                                        undoAction)
+                          .setAllowBlank(true));
+        props.add(new KeyStrokeProperty(KEY_REDO, "Redo:",
+                                        KeyStrokeManager.parseKeyStroke("Ctrl+Y"),
+                                        redoAction)
                           .setAllowBlank(true));
         props.add(new KeyStrokeProperty(KEY_CRYPT, "Encrypt/Decrypt:",
                                         KeyStrokeManager.parseKeyStroke("Ctrl+D"), // D for "decrypt/crypt" :)
