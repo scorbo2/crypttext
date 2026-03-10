@@ -20,6 +20,9 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.geom.Rectangle2D;
 
 /**
@@ -34,6 +37,7 @@ public class LineNumberGutter extends JPanel implements DocumentListener, CaretL
     private static final int PADDING = 5;
     private Font lineNumberFont;
     private Color lineNumberColor;
+    private int dragStartLine = -1;
 
     public LineNumberGutter(JTextPane textPane) {
         this.textPane = textPane;
@@ -48,6 +52,36 @@ public class LineNumberGutter extends JPanel implements DocumentListener, CaretL
                 repaint();
             }
         });
+
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    textPane.selectAll();
+                    textPane.requestFocusInWindow();
+                }
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.getClickCount() == 1) {
+                    dragStartLine = getLineAtY(e.getY());
+                    selectLine(dragStartLine);
+                    textPane.requestFocusInWindow();
+                }
+            }
+        });
+
+        addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if (dragStartLine >= 0) {
+                    int currentLine = getLineAtY(e.getY());
+                    selectLineRange(dragStartLine, currentLine);
+                }
+            }
+        });
+
         updateColors();
     }
 
@@ -133,6 +167,43 @@ public class LineNumberGutter extends JPanel implements DocumentListener, CaretL
                 // skip
             }
         }
+    }
+
+    /**
+     * Returns the zero-based line index in the document that is nearest to the given
+     * Y coordinate (in this component's coordinate space).
+     */
+    private int getLineAtY(int y) {
+        Element root = textPane.getDocument().getDefaultRootElement();
+        int lineCount = root.getElementCount();
+        int offset = textPane.viewToModel2D(new java.awt.Point(0, y));
+        int line = root.getElementIndex(offset);
+        return Math.max(0, Math.min(line, lineCount - 1));
+    }
+
+    /**
+     * Selects the entire content of the given zero-based line in the text pane.
+     */
+    private void selectLine(int lineIndex) {
+        Element root = textPane.getDocument().getDefaultRootElement();
+        int clamped = Math.max(0, Math.min(lineIndex, root.getElementCount() - 1));
+        Element lineElement = root.getElement(clamped);
+        textPane.setSelectionStart(lineElement.getStartOffset());
+        textPane.setSelectionEnd(lineElement.getEndOffset());
+    }
+
+    /**
+     * Selects all lines between fromLine and toLine (inclusive), in any order.
+     */
+    private void selectLineRange(int fromLine, int toLine) {
+        Element root = textPane.getDocument().getDefaultRootElement();
+        int lineCount = root.getElementCount();
+        int startLine = Math.max(0, Math.min(fromLine, toLine));
+        int endLine = Math.min(lineCount - 1, Math.max(fromLine, toLine));
+        int start = root.getElement(startLine).getStartOffset();
+        int end = root.getElement(endLine).getEndOffset();
+        textPane.setSelectionStart(start);
+        textPane.setSelectionEnd(end);
     }
 
     // DocumentListener — repaint when document changes

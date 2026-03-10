@@ -2,6 +2,7 @@ CryptText Release Notes
 ==============================================
 
 Version 1.1 - [TODO release date here]
+  #48 - Clicking line number gutter selects line(s) in text pane.
 
 Version 1.0 - [2026-03-08] Initial release
   #43 - Add README for v1 release.
