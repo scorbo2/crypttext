@@ -140,6 +140,10 @@ public class MenuManager {
     private void rebuildEditMenu() {
         editMenu.removeAll();
 
+        editMenu.add(new JMenuItem(AppConfig.getInstance().getUndoAction()));
+        editMenu.add(new JMenuItem(AppConfig.getInstance().getRedoAction()));
+        editMenu.addSeparator();
+
         // Add any items to this list from our extensions, if any:
         List<JMenuItem> extensionItems = CryptTextExtensionManager.getInstance().getMenuItems("Edit");
         if (!extensionItems.isEmpty()) {

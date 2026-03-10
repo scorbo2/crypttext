@@ -13,24 +13,17 @@ import ca.corbett.crypttext.ui.actions.UIReloadAction;
 import ca.corbett.extras.MessageUtil;
 import ca.corbett.extras.ScrollUtil;
 
-import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
-import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
-import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.UndoManager;
 import java.awt.BorderLayout;
-import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -83,7 +76,7 @@ public class EditorTab extends JPanel implements UIReloadable {
     private final LineNumberGutter gutter;
     private final EditorTabHeader tabHeader;
     private final UndoManager undoManager;
-    private final UndoableEditListener undoableEditListener;
+    private final GroupingUndoableEditListener undoableEditListener;
     private String name;
     private Text diskContents;
     private CryptMetadata cryptMetadata;
@@ -126,24 +119,9 @@ public class EditorTab extends JPanel implements UIReloadable {
         this.cryptMetadata = generateCryptMetadata();
         textPane.getDocument().addDocumentListener(new DocListener());
         undoManager = new UndoManager();
-        undoManager.setLimit(100);
-        undoableEditListener = e -> {
-            if (eventsEnabled) {
-                undoManager.addEdit(e.getEdit());
-            }
-        };
+        undoManager.setLimit(AppConfig.getInstance().getUndoLimit());
+        undoableEditListener = new GroupingUndoableEditListener(undoManager);
         textPane.getDocument().addUndoableEditListener(undoableEditListener);
-        KeyStroke undoKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Z,
-                                                         Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx());
-        textPane.getInputMap(JComponent.WHEN_FOCUSED).put(undoKeyStroke, "undo");
-        textPane.getActionMap().put("undo", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (undoManager.canUndo()) {
-                    undoManager.undo();
-                }
-            }
-        });
         isDirty = false;
         tabHeader = new EditorTabHeader(this, name);
         UIReloadAction.getInstance().registerReloadable(this);
@@ -203,6 +181,26 @@ public class EditorTab extends JPanel implements UIReloadable {
     }
 
     /**
+     * Undoes the last edit in this editor tab, if possible.
+     */
+    public void undo() {
+        undoableEditListener.flush(); // commit any in-progress group before undoing, so that undo will work as expected
+        if (undoManager.canUndo()) {
+            undoManager.undo();
+        }
+    }
+
+    /**
+     * Redoes the last undone edit in this editor tab, if possible.
+     */
+    public void redo() {
+        undoableEditListener.flush(); // commit any in-progress group before redoing, so that redo will work as expected
+        if (undoManager.canRedo()) {
+            undoManager.redo();
+        }
+    }
+
+    /**
      * Updates the name of this tab.
      */
     public void setTabName(String newName) {
@@ -248,6 +246,7 @@ public class EditorTab extends JPanel implements UIReloadable {
      */
     public void dispose() {
         UIReloadAction.getInstance().unregisterReloadable(this); // stop listening
+        undoableEditListener.flush(); // commit any pending group and stop the timer
         textPane.getDocument().removeUndoableEditListener(undoableEditListener);
     }
 
@@ -569,6 +568,8 @@ public class EditorTab extends JPanel implements UIReloadable {
         // The fix is to re-enable events inside our own invokeLater, so it is queued AFTER
         // the style-change event and will therefore run after eventsEnabled has been checked.
         eventsEnabled = false;
+        undoableEditListener.setEnabled(false);
+        undoManager.setLimit(AppConfig.getInstance().getUndoLimit());
         try {
             scrollPane.setRowHeaderView(AppConfig.getInstance().isShowLineNumbers() ? gutter : null);
             textPane.setFont(AppConfig.getInstance().getEditorFont());
@@ -579,7 +580,10 @@ public class EditorTab extends JPanel implements UIReloadable {
             repaint();
         }
         finally {
-            SwingUtilities.invokeLater(() -> eventsEnabled = true);
+            SwingUtilities.invokeLater(() -> {
+                eventsEnabled = true;
+                undoableEditListener.setEnabled(true);
+            });
         }
 
         // Note: our EditorTabHeader is updated via MainWindow's reloadUI handler,
