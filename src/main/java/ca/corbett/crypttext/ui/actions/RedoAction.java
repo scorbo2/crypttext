@@ -1,7 +1,10 @@
 package ca.corbett.crypttext.ui.actions;
 
+import ca.corbett.crypttext.ui.EditorTab;
+import ca.corbett.crypttext.ui.MainWindow;
 import ca.corbett.extras.EnhancedAction;
 
+import java.awt.Component;
 import java.awt.event.ActionEvent;
 
 /**
@@ -19,8 +22,8 @@ public class RedoAction extends EnhancedAction {
     public void actionPerformed(ActionEvent e) {
         // It's weird that our editor tab pane allows tabs that aren't EditorTab instances.
         // Let's just filter them out. Might add code later to enforce EditorTabs only.
-        var c = ca.corbett.crypttext.ui.MainWindow.getInstance().getEditorTabPane().getCurrentTab();
-        if (!(c instanceof ca.corbett.crypttext.ui.EditorTab editorTab)) {
+        Component c = MainWindow.getInstance().getEditorTabPane().getCurrentTab();
+        if (!(c instanceof EditorTab editorTab)) {
             return;
         }
 

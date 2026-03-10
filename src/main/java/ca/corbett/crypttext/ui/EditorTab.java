@@ -184,6 +184,7 @@ public class EditorTab extends JPanel implements UIReloadable {
      * Undoes the last edit in this editor tab, if possible.
      */
     public void undo() {
+        undoableEditListener.flush(); // commit any in-progress group before undoing, so that undo will work as expected
         if (undoManager.canUndo()) {
             undoManager.undo();
         }
@@ -193,6 +194,7 @@ public class EditorTab extends JPanel implements UIReloadable {
      * Redoes the last undone edit in this editor tab, if possible.
      */
     public void redo() {
+        undoableEditListener.flush(); // commit any in-progress group before redoing, so that redo will work as expected
         if (undoManager.canRedo()) {
             undoManager.redo();
         }
