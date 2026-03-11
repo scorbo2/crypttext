@@ -15,6 +15,7 @@ import ca.corbett.extras.MessageUtil;
 import ca.corbett.extras.SingleInstanceManager;
 import ca.corbett.extras.ToggleableTabbedPane;
 import ca.corbett.extras.io.KeyStrokeManager;
+import ca.corbett.extras.io.TextFileDetector;
 import ca.corbett.extras.logging.LogConsole;
 import ca.corbett.extras.logging.LogConsoleStyle;
 import ca.corbett.extras.logging.LogConsoleTheme;
@@ -26,6 +27,12 @@ import javax.swing.JFrame;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetAdapter;
+import java.awt.dnd.DropTargetDropEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -74,6 +81,9 @@ public final class MainWindow extends JFrame implements UIReloadable {
         // We will also have an option for restoring previously-opened tabs on startup.
         // For now, we will just start with a single blank tab:
         newTab();
+
+        // Set up drag-and-drop support so users can drag files from OS file manager:
+        configureDropTarget();
     }
 
     public static MainWindow getInstance() {
@@ -485,6 +495,44 @@ public final class MainWindow extends JFrame implements UIReloadable {
                 setTitle(Version.FULL_NAME + " - " + editorTab.getDiskContents().getSourceFile().getAbsolutePath());
             }
         }
+    }
+
+    /**
+     * Configures this window to accept file drops from the OS file manager.
+     * Dropped files are validated using TextFileDetector and opened in new editor tabs.
+     */
+    private void configureDropTarget() {
+        new DropTarget(this, DnDConstants.ACTION_COPY, new DropTargetAdapter() {
+            @Override
+            public void drop(DropTargetDropEvent event) {
+                try {
+                    event.acceptDrop(DnDConstants.ACTION_COPY);
+                    Transferable transferable = event.getTransferable();
+                    if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                        @SuppressWarnings("unchecked")
+                        List<File> droppedFiles = (List<File>) transferable.getTransferData(DataFlavor.javaFileListFlavor);
+                        for (File file : droppedFiles) {
+                            try {
+                                if (!TextFileDetector.isTextFile(file)) {
+                                    getMessageUtil().error("The dropped file does not appear to be a text file: " + file.getAbsolutePath());
+                                    continue;
+                                }
+                            }
+                            catch (IOException ioe) {
+                                getMessageUtil().error("Error accessing file: " + ioe.getMessage(), ioe);
+                                continue;
+                            }
+                            editorTabPane.newTextTab(file);
+                        }
+                    }
+                    event.dropComplete(true);
+                }
+                catch (Exception e) {
+                    event.dropComplete(false);
+                    logger.log(Level.WARNING, "Unexpected error handling drag-and-drop: " + e.getMessage(), e);
+                }
+            }
+        });
     }
 
     /**
