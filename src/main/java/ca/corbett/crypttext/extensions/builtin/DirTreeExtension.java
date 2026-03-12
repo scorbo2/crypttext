@@ -6,6 +6,7 @@ import ca.corbett.crypttext.extensions.CryptTextExtension;
 import ca.corbett.crypttext.extensions.ExtraComponentPosition;
 import ca.corbett.crypttext.ui.MainWindow;
 import ca.corbett.crypttext.ui.TextFileFilter;
+import ca.corbett.crypttext.ui.UIReloadable;
 import ca.corbett.crypttext.ui.actions.UIReloadAction;
 import ca.corbett.extensions.AppExtensionInfo;
 import ca.corbett.extras.EnhancedAction;
@@ -17,12 +18,16 @@ import ca.corbett.extras.io.KeyStrokeManager;
 import ca.corbett.extras.io.TextFileDetector;
 import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
+import ca.corbett.extras.properties.IntegerProperty;
 import ca.corbett.extras.properties.KeyStrokeProperty;
+import ca.corbett.extras.properties.LabelProperty;
 
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
@@ -37,10 +42,14 @@ import java.util.logging.Logger;
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
-public class DirTreeExtension extends CryptTextExtension {
+public class DirTreeExtension extends CryptTextExtension implements UIReloadable {
     private static final Logger log = Logger.getLogger(DirTreeExtension.class.getName());
 
-    private static final String SHOW_TREE_PROP = "UI.General.showTree";
+    private static final int DEFAULT_TREE_WIDTH = 250;
+
+    private static final String INTRO_LABEL_PROP = "UI.DirTree.introLabel";
+    private static final String SHOW_TREE_PROP = "UI.DirTree.showTree";
+    private static final String WIDTH_PROP = "UI.DirTree.treeWidth";
     private static final String KEY_PROP = AppConfig.KEYSTROKE_PREFIX + "General.toggleKey";
 
     private final CustomTreeListener treeListener = new CustomTreeListener();
@@ -68,11 +77,14 @@ public class DirTreeExtension extends CryptTextExtension {
         dirTree.setShowFiles(true);
         dirTree.setFileFilter(TextFileFilter.DEFAULT);
         dirTree.addDirTreeListener(treeListener);
+        setConfiguredTreeWidth(); // may have changed since we were last activated
         LookAndFeelManager.addChangeListener(lafChangeListener);
+        UIReloadAction.getInstance().registerReloadable(this);
     }
 
     @Override
     public void onDeactivate() {
+        UIReloadAction.getInstance().unregisterReloadable(this);
         LookAndFeelManager.removeChangeListener(lafChangeListener);
         dirTree.removeDirTreeListener(treeListener);
         dirTree = null;
@@ -87,11 +99,15 @@ public class DirTreeExtension extends CryptTextExtension {
     protected List<AbstractProperty> createConfigProperties() {
         List<AbstractProperty> props = new ArrayList<>();
 
+        props.add(new LabelProperty(INTRO_LABEL_PROP,
+                                    "<html>This extension adds an optional directory tree" +
+                                            "<br>to the left of the editor for quick file navigation.</html>"));
         props.add(new BooleanProperty(SHOW_TREE_PROP, "Show directory tree", true));
         props.add(new KeyStrokeProperty(KEY_PROP, "Show/hide DirTree",
                                         KeyStrokeManager.parseKeyStroke("F4"),
                                         new ToggleTreeAction())
                           .setAllowBlank(true));
+        props.add(new IntegerProperty(WIDTH_PROP, "Tree width:", DEFAULT_TREE_WIDTH, 80, 1200, 10));
 
         return props;
     }
@@ -108,6 +124,42 @@ public class DirTreeExtension extends CryptTextExtension {
         }
 
         return null;
+    }
+
+    @Override
+    public void reloadUI() {
+        setConfiguredTreeWidth();
+
+        // Force a redraw of the parent container:
+        Container container = dirTree.getParent();
+        if (container != null) {
+            container.revalidate();
+            container.repaint();
+        }
+    }
+
+    /**
+     * Invoked internally to look up the currently configured width of the DirTree
+     * and set the preferred and minimum sizes accordingly.
+     */
+    private void setConfiguredTreeWidth() {
+        int width = getConfiguredTreeWidth();
+        dirTree.setPreferredSize(new Dimension(width, dirTree.getPreferredSize().height));
+        dirTree.setMinimumSize(new Dimension(width, 1));
+    }
+
+    /**
+     * Invoked internally to look up and return the currently configured width
+     * of the DirTree.
+     *
+     * @return The configured width, or DEFAULT_TREE_WIDTH if the config property is not found or invalid.
+     */
+    private int getConfiguredTreeWidth() {
+        AbstractProperty prop = AppConfig.getInstance().getPropertiesManager().getProperty(WIDTH_PROP);
+        if (prop instanceof IntegerProperty intProp) {
+            return intProp.getValue();
+        }
+        return DEFAULT_TREE_WIDTH;
     }
 
     /**
