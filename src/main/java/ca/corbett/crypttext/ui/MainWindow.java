@@ -83,7 +83,7 @@ public final class MainWindow extends JFrame implements UIReloadable {
         newTab();
 
         // Set up drag-and-drop support so users can drag files from OS file manager:
-        configureDropTarget();
+        MainWindow.configureDropTarget(this, getMessageUtil());
     }
 
     public static MainWindow getInstance() {
@@ -498,11 +498,15 @@ public final class MainWindow extends JFrame implements UIReloadable {
     }
 
     /**
-     * Configures this window to accept file drops from the OS file manager.
+     * Configures the given component to accept file drops from the OS file manager.
      * Dropped files are validated using TextFileDetector and opened in new editor tabs.
+     * This overrides any built-in drag-and-drop behavior on the target component (e.g. JTextPane).
+     *
+     * @param target      The component to register the drop target on.
+     * @param messageUtil A MessageUtil instance used to report errors to the user.
      */
-    private void configureDropTarget() {
-        new DropTarget(this, DnDConstants.ACTION_COPY, new DropTargetAdapter() {
+    public static void configureDropTarget(Component target, MessageUtil messageUtil) {
+        new DropTarget(target, DnDConstants.ACTION_COPY, new DropTargetAdapter() {
             @Override
             public void drop(DropTargetDropEvent event) {
                 boolean dropSucceeded = false;
@@ -521,17 +525,17 @@ public final class MainWindow extends JFrame implements UIReloadable {
                             }
                             try {
                                 if (!TextFileDetector.isTextFile(file)) {
-                                    getMessageUtil().error(
+                                    messageUtil.error(
                                             "The dropped file does not appear to be a text file: "
                                             + file.getAbsolutePath());
                                     continue;
                                 }
                             }
                             catch (IOException ioe) {
-                                getMessageUtil().error("Error accessing file: " + ioe.getMessage(), ioe);
+                                messageUtil.error("Error accessing file: " + ioe.getMessage(), ioe);
                                 continue;
                             }
-                            editorTabPane.newTextTab(file);
+                            MainWindow.getInstance().getEditorTabPane().newTextTab(file);
                         }
                         dropSucceeded = true;
                     }

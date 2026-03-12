@@ -12,7 +12,6 @@ import ca.corbett.crypttext.text.Text;
 import ca.corbett.crypttext.ui.actions.UIReloadAction;
 import ca.corbett.extras.MessageUtil;
 import ca.corbett.extras.ScrollUtil;
-import ca.corbett.extras.io.TextFileDetector;
 
 import javax.swing.ImageIcon;
 import javax.swing.JFileChooser;
@@ -25,17 +24,10 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.undo.UndoManager;
 import java.awt.BorderLayout;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.Transferable;
-import java.awt.dnd.DnDConstants;
-import java.awt.dnd.DropTarget;
-import java.awt.dnd.DropTargetAdapter;
-import java.awt.dnd.DropTargetDropEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -132,7 +124,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         textPane.getDocument().addUndoableEditListener(undoableEditListener);
         isDirty = false;
         tabHeader = new EditorTabHeader(this, name);
-        configureDropTarget();
+        MainWindow.configureDropTarget(textPane, getMessageUtil());
         UIReloadAction.getInstance().registerReloadable(this);
         reloadUI(); // force an immediate update to pick up the correct theme and color scheme
     }
@@ -894,55 +886,5 @@ public class EditorTab extends JPanel implements UIReloadable {
             messageUtil = new MessageUtil(MainWindow.getInstance(), log);
         }
         return messageUtil;
-    }
-
-    /**
-     * Configures the text pane to accept file drops from the OS file manager,
-     * overriding the JTextPane's built-in drag-and-drop behavior for file drops.
-     * Dropped files are validated using TextFileDetector and opened in new editor tabs.
-     */
-    private void configureDropTarget() {
-        new DropTarget(textPane, DnDConstants.ACTION_COPY, new DropTargetAdapter() {
-            @Override
-            public void drop(DropTargetDropEvent event) {
-                boolean dropSucceeded = false;
-                try {
-                    event.acceptDrop(DnDConstants.ACTION_COPY);
-                    Transferable transferable = event.getTransferable();
-                    if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                        @SuppressWarnings("unchecked")
-                        List<File> droppedFiles = (List<File>) transferable
-                                .getTransferData(DataFlavor.javaFileListFlavor);
-                        for (File file : droppedFiles) {
-                            if (!file.exists() || !file.isFile()) {
-                                log.log(Level.WARNING,
-                                        "Dropped item is not a valid file: " + file.getAbsolutePath());
-                                continue;
-                            }
-                            try {
-                                if (!TextFileDetector.isTextFile(file)) {
-                                    getMessageUtil().error(
-                                            "The dropped file does not appear to be a text file: "
-                                            + file.getAbsolutePath());
-                                    continue;
-                                }
-                            }
-                            catch (IOException ioe) {
-                                getMessageUtil().error("Error accessing file: " + ioe.getMessage(), ioe);
-                                continue;
-                            }
-                            MainWindow.getInstance().getEditorTabPane().newTextTab(file);
-                        }
-                        dropSucceeded = true;
-                    }
-                }
-                catch (Exception e) {
-                    log.log(Level.WARNING, "Unexpected error handling drag-and-drop: " + e.getMessage(), e);
-                }
-                finally {
-                    event.dropComplete(dropSucceeded);
-                }
-            }
-        });
     }
 }
