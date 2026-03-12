@@ -66,7 +66,7 @@ public class BlockCursor extends DefaultCaret {
      */
     @Override
     public void damage(Rectangle r) {
-        if (r == null) {
+        if (r == null && getComponent() == null) {
             return;
         }
         x = r.x;
@@ -83,7 +83,7 @@ public class BlockCursor extends DefaultCaret {
      */
     @Override
     public void paint(Graphics g) {
-        if (isVisible()) {
+        if (isVisible() && getComponent() != null) {
             try {
                 // We want the block cursor to be 75% opaque:
                 Color cursorColor = getComponent().getCaretColor();
