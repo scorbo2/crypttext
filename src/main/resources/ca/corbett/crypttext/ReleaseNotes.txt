@@ -4,6 +4,7 @@ CryptText Release Notes
 Version 1.1 - [TODO release date here]
   #62 - DirTree: more config options.
   #58 - Allow drag and drop from OS file manager to open file(s).
+  #57 - EditorTab: scroll to top when opening tabs.
   #56 - Add keyboard shortcuts for changing font size on the fly.
   #54 - DirTree: allow configurable width.
   #52 - Undo support: make keystroke configurable + compound edits.

@@ -95,6 +95,7 @@ public class EditorTabPane extends JTabbedPane {
             if (tab instanceof EditorTab editorTab) {
                 if (editorTab.getDiskContents().isSameSourceFile(text)) {
                     setSelectedIndex(i);
+                    editorTab.requestFocusInTextPane();
                     return;
                 }
             }
@@ -105,6 +106,7 @@ public class EditorTabPane extends JTabbedPane {
         editorTabs.add(editorTab);
         addTab(title, editorTab.getIcon(), editorTab);
         setTabComponentAt(getTabCount() - 1, editorTab.getTabHeader());
+        editorTab.requestFocusInTextPane();
 
         // If this isn't a scratch file, add it to the "recent files" list:
         if (!editorTab.isScratchFile()) {

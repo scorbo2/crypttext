@@ -116,6 +116,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         add(wrapperPanel, BorderLayout.CENTER);
         this.diskContents = diskContents;
         textPane.setText(this.diskContents.getText()); // initial value
+        textPane.setCaretPosition(0); // move caret to beginning of whatever text we just loaded.
         this.cryptMetadata = generateCryptMetadata();
         textPane.getDocument().addDocumentListener(new DocListener());
         undoManager = new UndoManager();
@@ -199,6 +200,16 @@ public class EditorTab extends JPanel implements UIReloadable {
         if (undoManager.canRedo()) {
             undoManager.redo();
         }
+    }
+
+    /**
+     * Invoke this to try to set the keyboard focus to the text pane in this editor tab.
+     * This is not guaranteed to work, just because of the way the focus system
+     * works in general, but we'll give it a shot.
+     */
+    public void requestFocusInTextPane() {
+        ownerPane.setSelectedComponent(this); // first, make sure we're the active tab, otherwise focus won't come to us
+        SwingUtilities.invokeLater(textPane::requestFocusInWindow);
     }
 
     /**
