@@ -24,6 +24,7 @@ import ca.corbett.extras.properties.KeyStrokeProperty;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -56,6 +57,7 @@ public final class MainWindow extends JFrame implements UIReloadable {
     private TabStateManager tabStateManager;
     private final RecentFilesManager recentFilesManager;
     private MessageUtil messageUtil;
+    private boolean cleanupComplete;
 
     private MainWindow() {
         setTitle(Version.FULL_NAME);
@@ -63,6 +65,7 @@ public final class MainWindow extends JFrame implements UIReloadable {
         setSize(800, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         addWindowListener(new WindowCloseHandler());
+        cleanupComplete = false;
         keyStrokeManager = new KeyStrokeManager(this);
         menuManager = new MenuManager();
         recentFilesManager = new RecentFilesManager();
@@ -180,6 +183,12 @@ public final class MainWindow extends JFrame implements UIReloadable {
      * or when the application needs to restart to pick up an extension change.
      */
     public void cleanup() {
+        // Make the method idempotent, just in case:
+        if (cleanupComplete) {
+            return;
+        }
+
+        cleanupComplete = true;
         logger.info("Shutting down: MainWindow cleanup invoked.");
 
         // Persist our list of "most recently accessed" files:
@@ -498,9 +507,35 @@ public final class MainWindow extends JFrame implements UIReloadable {
     }
 
     /**
+     * Uses TextFileDetector and other heuristics to determine if the given
+     * candidate file is a valid, existing, and readable text-based file.
+     * No errors are logged or reported to the user - a simple true/false
+     * return is all you get here.
+     *
+     * @param file Any candidate File.
+     * @return true only if all checks succeed - the file exists, is readable, and looks like text.
+     */
+    public static boolean isValidTextFile(File file) {
+        if (file == null || !file.exists() || !file.isFile() || !file.canRead()) {
+            return false;
+        }
+        try {
+            if (!TextFileDetector.isTextFile(file)) {
+                return false;
+            }
+        }
+        catch (IOException ignored) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Configures the given component to accept file drops from the OS file manager.
      * Dropped files are validated using TextFileDetector and opened in new editor tabs.
-     * This overrides any built-in drag-and-drop behavior on the target component (e.g. JTextPane).
+     * This overrides any built-in drag-and-drop behavior on the target component
+     * (e.g. JTextPane, as we invoke this method from each EditorTab as well).
      *
      * @param target      The component to register the drop target on.
      * @param messageUtil A MessageUtil instance used to report errors to the user.
@@ -511,34 +546,44 @@ public final class MainWindow extends JFrame implements UIReloadable {
             public void drop(DropTargetDropEvent event) {
                 boolean dropSucceeded = false;
                 try {
-                    event.acceptDrop(DnDConstants.ACTION_COPY);
                     Transferable transferable = event.getTransferable();
-                    if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                        @SuppressWarnings("unchecked")
-                        List<File> droppedFiles = (List<File>) transferable
-                                .getTransferData(DataFlavor.javaFileListFlavor);
-                        for (File file : droppedFiles) {
-                            if (!file.exists() || !file.isFile()) {
-                                logger.log(Level.WARNING,
-                                           "Dropped item is not a valid file: " + file.getAbsolutePath());
-                                continue;
-                            }
-                            try {
-                                if (!TextFileDetector.isTextFile(file)) {
-                                    messageUtil.error(
-                                            "The dropped file does not appear to be a text file: "
-                                            + file.getAbsolutePath());
-                                    continue;
-                                }
-                            }
-                            catch (IOException ioe) {
-                                messageUtil.error("Error accessing file: " + ioe.getMessage(), ioe);
-                                continue;
-                            }
-                            MainWindow.getInstance().getEditorTabPane().newTextTab(file);
-                        }
-                        dropSucceeded = true;
+                    if (!transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                        logger.warning("Rejecting invalid drop: not a file list.");
+                        event.rejectDrop();
+                        return;
                     }
+                    event.acceptDrop(DnDConstants.ACTION_COPY);
+                    @SuppressWarnings("unchecked")
+                    List<File> droppedFiles = (List<File>)transferable
+                            .getTransferData(DataFlavor.javaFileListFlavor);
+                    if (droppedFiles.isEmpty()) {
+                        // Rare but could happen.
+                        logger.warning("Rejecting invalid drop: empty file list.");
+                        event.rejectDrop();
+                        return;
+                    }
+                    int successCount = 0;
+                    for (File file : droppedFiles) {
+                        if (!isValidTextFile(file)) {
+                            final String msg = "Rejecting invalid drop: not a text file: " + file.getAbsolutePath();
+                            if (!SwingUtilities.isEventDispatchThread()) {
+                                // dispatch via EDT and wait for response.
+                                // We wait to avoid popping multiple error dialogs at once
+                                // if more than one file is invalid.
+                                SwingUtilities.invokeAndWait(() -> messageUtil.error(msg));
+                            }
+                            else {
+                                // We're on the EDT, just show it:
+                                messageUtil.error(msg);
+                            }
+                            continue;
+                        }
+
+                        // Open the file in a new tab on the EDT:
+                        SwingUtilities.invokeLater(() -> getInstance().getEditorTabPane().newTextTab(file));
+                        successCount++;
+                    }
+                    dropSucceeded = (successCount > 0); // if any succeeded, we'll call it a win.
                 }
                 catch (Exception e) {
                     logger.log(Level.WARNING, "Unexpected error handling drag-and-drop: " + e.getMessage(), e);
