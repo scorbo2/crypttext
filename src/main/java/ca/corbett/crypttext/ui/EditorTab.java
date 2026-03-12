@@ -25,6 +25,7 @@ import javax.swing.event.DocumentListener;
 import javax.swing.text.DefaultCaret;
 import javax.swing.undo.UndoManager;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -590,9 +591,10 @@ public class EditorTab extends JPanel implements UIReloadable {
             textPane.setFont(appConfig.getEditorFont());
             gutter.setLineNumberFont(appConfig.getGutterFont());
             gutter.updateColors(); // tell our gutter to update its colors based on the current theme
+            Color fg = appConfig.getEditorForegroundColor();
             textPane.setBackground(appConfig.getEditorBackgroundColor());
-            textPane.setForeground(appConfig.getEditorForegroundColor());
-            textPane.setCaretColor(appConfig.getEditorForegroundColor());
+            textPane.setForeground(fg);
+            textPane.setCaretColor(fg);
 
             // Note these because swapping out the caret might reset them:
             int savedDot = textPane.getCaret().getDot();
@@ -600,7 +602,7 @@ public class EditorTab extends JPanel implements UIReloadable {
 
             // Swap out the caret as needed:
             if (appConfig.isUseBlockCursor()) {
-                textPane.setCaret(new BlockCursor(appConfig.getCursorBlinkRate()));
+                textPane.setCaret(new BlockCursor(appConfig.getCursorBlinkRate(), fg));
             }
             else {
                 // boring cursor activated!

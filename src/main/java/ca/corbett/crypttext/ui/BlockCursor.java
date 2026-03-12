@@ -15,15 +15,21 @@ import java.awt.Rectangle;
  */
 public class BlockCursor extends DefaultCaret {
 
+    private static final int ALPHA = 192; // 75% opacity, currently not configurable
     private final Timer blinkTimer;
+    private final Color cursorColor;
 
     /**
      * Creates a new BlockCursor with the specified blink rate in milliseconds.
      * A value of zero or less means "don't blink".
      *
      * @param blinkRate The blink rate in milliseconds, or zero/negative for no blinking.
+     * @param color The desired cursor color
      */
-    public BlockCursor(int blinkRate) {
+    public BlockCursor(int blinkRate, Color color) {
+        // We want the block cursor to be 75% opaque:
+        cursorColor = new Color(color.getRed(), color.getGreen(), color.getBlue(), ALPHA);
+
         // The parent class's timer has strange behavior where the blink rate slows
         // down noticeably when no mouse or keyboard activity is happening in the text pane.
         // We can try to work around this by creating our own timer and bypassing
@@ -85,13 +91,9 @@ public class BlockCursor extends DefaultCaret {
     public void paint(Graphics g) {
         if (isVisible() && getComponent() != null) {
             try {
-                // We want the block cursor to be 75% opaque:
-                Color cursorColor = getComponent().getCaretColor();
-                Color newColor = new Color(cursorColor.getRed(), cursorColor.getGreen(), cursorColor.getBlue(), 192);
-
                 // Get the target rectangle and set our color:
                 Rectangle r = getComponent().getUI().modelToView(getComponent(), getDot());
-                g.setColor(newColor);
+                g.setColor(cursorColor);
 
                 // In my testing, I find that r.width is always 0, and I don't know why.
                 // So, let's set something reasonable instead:
