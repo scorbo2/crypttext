@@ -559,13 +559,13 @@ public final class MainWindow extends JFrame implements UIReloadable {
                     if (droppedFiles.isEmpty()) {
                         // Rare but could happen.
                         logger.warning("Rejecting invalid drop: empty file list.");
-                        event.rejectDrop();
                         return;
                     }
                     int successCount = 0;
                     for (File file : droppedFiles) {
                         if (!isValidTextFile(file)) {
-                            final String msg = "Rejecting invalid drop: not a text file: " + file.getAbsolutePath();
+                            final String path = file == null ? "null" : file.getAbsolutePath();
+                            final String msg = "Rejecting invalid drop: not a text file: " + path;
                             if (!SwingUtilities.isEventDispatchThread()) {
                                 // dispatch via EDT and wait for response.
                                 // We wait to avoid popping multiple error dialogs at once
