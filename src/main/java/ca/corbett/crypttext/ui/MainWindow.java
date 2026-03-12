@@ -505,16 +505,25 @@ public final class MainWindow extends JFrame implements UIReloadable {
         new DropTarget(this, DnDConstants.ACTION_COPY, new DropTargetAdapter() {
             @Override
             public void drop(DropTargetDropEvent event) {
+                boolean dropSucceeded = false;
                 try {
                     event.acceptDrop(DnDConstants.ACTION_COPY);
                     Transferable transferable = event.getTransferable();
                     if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
                         @SuppressWarnings("unchecked")
-                        List<File> droppedFiles = (List<File>) transferable.getTransferData(DataFlavor.javaFileListFlavor);
+                        List<File> droppedFiles = (List<File>) transferable
+                                .getTransferData(DataFlavor.javaFileListFlavor);
                         for (File file : droppedFiles) {
+                            if (!file.exists() || !file.isFile()) {
+                                logger.log(Level.WARNING,
+                                           "Dropped item is not a valid file: " + file.getAbsolutePath());
+                                continue;
+                            }
                             try {
                                 if (!TextFileDetector.isTextFile(file)) {
-                                    getMessageUtil().error("The dropped file does not appear to be a text file: " + file.getAbsolutePath());
+                                    getMessageUtil().error(
+                                            "The dropped file does not appear to be a text file: "
+                                            + file.getAbsolutePath());
                                     continue;
                                 }
                             }
@@ -524,12 +533,14 @@ public final class MainWindow extends JFrame implements UIReloadable {
                             }
                             editorTabPane.newTextTab(file);
                         }
+                        dropSucceeded = true;
                     }
-                    event.dropComplete(true);
                 }
                 catch (Exception e) {
-                    event.dropComplete(false);
                     logger.log(Level.WARNING, "Unexpected error handling drag-and-drop: " + e.getMessage(), e);
+                }
+                finally {
+                    event.dropComplete(dropSucceeded);
                 }
             }
         });
