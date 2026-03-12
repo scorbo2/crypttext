@@ -7,6 +7,8 @@ import ca.corbett.crypttext.ui.actions.AboutAction;
 import ca.corbett.crypttext.ui.actions.CryptAction;
 import ca.corbett.crypttext.ui.actions.ExitAction;
 import ca.corbett.crypttext.ui.actions.ExtensionManagerAction;
+import ca.corbett.crypttext.ui.actions.FontSizeDownAction;
+import ca.corbett.crypttext.ui.actions.FontSizeUpAction;
 import ca.corbett.crypttext.ui.actions.ForgetPasswordAction;
 import ca.corbett.crypttext.ui.actions.LogConsoleAction;
 import ca.corbett.crypttext.ui.actions.NewTabAction;
@@ -91,6 +93,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private static final String KEY_SAVE_UNENCRYPTED = KEYSTROKE_PREFIX + "General.saveUnencrypted";
     private static final String KEY_UNDO = KEYSTROKE_PREFIX + "General.undo";
     private static final String KEY_REDO = KEYSTROKE_PREFIX + "General.redo";
+    private static final String KEY_FONT_SIZE_UP = KEYSTROKE_PREFIX + "General.fontSizeUp";
+    private static final String KEY_FONT_SIZE_DOWN = KEYSTROKE_PREFIX + "General.fontSizeDown";
     private static final String KEY_CRYPT = KEYSTROKE_PREFIX + "General.crypt";
     private static final String KEY_FORGET_PASSWORD = KEYSTROKE_PREFIX + "General.forgetPassword";
     private static final String KEY_PROPERTIES = KEYSTROKE_PREFIX + "General.properties";
@@ -134,6 +138,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private Action saveUnencryptedAction;
     private Action undoAction;
     private Action redoAction;
+    private Action fontSizeUpAction;
+    private Action fontSizeDownAction;
     private Action cryptAction;
     private Action forgetPasswordAction;
     private Action propertiesAction;
@@ -211,6 +217,14 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         return redoAction;
     }
 
+    public Action getFontSizeUpAction() {
+        return fontSizeUpAction;
+    }
+
+    public Action getFontSizeDownAction() {
+        return fontSizeDownAction;
+    }
+
     public Action getCryptAction() {
         return cryptAction;
     }
@@ -254,6 +268,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_SAVE_UNENCRYPTED));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_UNDO));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_REDO));
+        keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_FONT_SIZE_UP));
+        keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_FONT_SIZE_DOWN));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_CRYPT));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_FORGET_PASSWORD));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_PROPERTIES));
@@ -351,6 +367,28 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
      */
     public Font getEditorFont() {
         return editorFontProp.getFont();
+    }
+
+    /**
+     * Returns the currently configured point size of the editor font.
+     */
+    public int getEditorFontSize() {
+        return editorFontProp.getFont().getSize();
+    }
+
+    /**
+     * Sets the editor font size to the given point size, while keeping the same font family and style.
+     * Triggers an immediate save to persist this change. There are no upper bounds checks,
+     * but the given point size must be greater than zero.
+     *
+     * @param pointSize The new font size in points (e.g. 14). Must be positive.
+     */
+    public void setEditorFontSize(int pointSize) {
+        if (pointSize <= 0) {
+            throw new IllegalArgumentException("Font size must be positive");
+        }
+        editorFontProp.setFont(getEditorFont().deriveFont((float)pointSize));
+        save(); // immediate save to persist this change
     }
 
     /**
@@ -476,6 +514,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         saveUnencryptedAction = new SaveUnencryptedAction();
         undoAction = new UndoAction();
         redoAction = new RedoAction();
+        fontSizeUpAction = new FontSizeUpAction();
+        fontSizeDownAction = new FontSizeDownAction();
         cryptAction = new CryptAction();
         forgetPasswordAction = new ForgetPasswordAction();
         propertiesAction = new PropertiesAction();
@@ -660,6 +700,14 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         props.add(new KeyStrokeProperty(KEY_REDO, "Redo:",
                                         KeyStrokeManager.parseKeyStroke("Ctrl+Y"),
                                         redoAction)
+                          .setAllowBlank(true));
+        props.add(new KeyStrokeProperty(KEY_FONT_SIZE_UP, "Increase Font Size:",
+                                        KeyStrokeManager.parseKeyStroke("Ctrl+Equals"), // VK_PLUS fails???
+                                        fontSizeUpAction)
+                          .setAllowBlank(true));
+        props.add(new KeyStrokeProperty(KEY_FONT_SIZE_DOWN, "Decrease Font Size:",
+                                        KeyStrokeManager.parseKeyStroke("Ctrl+Minus"),
+                                        fontSizeDownAction)
                           .setAllowBlank(true));
         props.add(new KeyStrokeProperty(KEY_CRYPT, "Encrypt/Decrypt:",
                                         KeyStrokeManager.parseKeyStroke("Ctrl+D"), // D for "decrypt/crypt" :)

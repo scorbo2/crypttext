@@ -3,6 +3,7 @@ CryptText Release Notes
 
 Version 1.1 - [TODO release date here]
   #58 - Allow drag and drop from OS file manager to open file(s).
+  #56 - Add keyboard shortcuts for changing font size on the fly.
   #52 - Undo support: make keystroke configurable + compound edits.
   #50 - Undo support: Ctrl+Z undoes the last edit in each editor tab.
   #48 - Clicking line number gutter selects line(s) in text pane.
