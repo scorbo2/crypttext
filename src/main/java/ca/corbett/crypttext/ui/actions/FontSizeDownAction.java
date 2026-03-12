@@ -28,7 +28,7 @@ public class FontSizeDownAction extends EnhancedAction {
         int currentSize = AppConfig.getInstance().getEditorFontSize();
         int newSize = currentSize - 2;
         if (newSize <= 0) {
-            log.warning("Cannot decrease editor font size below 2 points.");
+            log.warning("Cannot decrease editor font size to zero!");
             return; // don't allow non-positive font sizes
         }
         log.info("Decreasing editor font size from " + currentSize + " to " + newSize);
