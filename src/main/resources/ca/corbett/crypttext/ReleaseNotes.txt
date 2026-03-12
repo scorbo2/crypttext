@@ -2,6 +2,7 @@ CryptText Release Notes
 ==============================================
 
 Version 1.1 - [TODO release date here]
+  #65 - Better cursor handling with custom themes.
   #62 - DirTree: more config options.
   #58 - Allow drag and drop from OS file manager to open file(s).
   #57 - EditorTab: scroll to top when opening tabs.

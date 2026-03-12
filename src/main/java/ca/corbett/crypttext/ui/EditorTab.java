@@ -22,8 +22,10 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.text.DefaultCaret;
 import javax.swing.undo.UndoManager;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -573,6 +575,8 @@ public class EditorTab extends JPanel implements UIReloadable {
      */
     @Override
     public void reloadUI() {
+        final AppConfig appConfig = AppConfig.getInstance();
+
         // Weirdly, some of these calls will trigger a change event.
         // Example: textPane.setFont() schedules a changedUpdate via SwingUtilities.invokeLater
         // deep inside DefaultStyledDocument.styleChanged. That means the changedUpdate fires
@@ -581,14 +585,35 @@ public class EditorTab extends JPanel implements UIReloadable {
         // the style-change event and will therefore run after eventsEnabled has been checked.
         eventsEnabled = false;
         undoableEditListener.setEnabled(false);
-        undoManager.setLimit(AppConfig.getInstance().getUndoLimit());
+        undoManager.setLimit(appConfig.getUndoLimit());
         try {
-            scrollPane.setRowHeaderView(AppConfig.getInstance().isShowLineNumbers() ? gutter : null);
-            textPane.setFont(AppConfig.getInstance().getEditorFont());
-            gutter.setLineNumberFont(AppConfig.getInstance().getGutterFont());
+            scrollPane.setRowHeaderView(appConfig.isShowLineNumbers() ? gutter : null);
+            textPane.setFont(appConfig.getEditorFont());
+            gutter.setLineNumberFont(appConfig.getGutterFont());
             gutter.updateColors(); // tell our gutter to update its colors based on the current theme
-            textPane.setBackground(AppConfig.getInstance().getEditorBackgroundColor());
-            textPane.setForeground(AppConfig.getInstance().getEditorForegroundColor());
+            Color fg = appConfig.getEditorForegroundColor();
+            textPane.setBackground(appConfig.getEditorBackgroundColor());
+            textPane.setForeground(fg);
+            textPane.setCaretColor(fg);
+
+            // Note these because swapping out the caret might reset them:
+            int savedDot = textPane.getCaret().getDot();
+            int savedMark = textPane.getCaret().getMark();
+
+            // Swap out the caret as needed:
+            if (appConfig.isUseBlockCursor()) {
+                textPane.setCaret(new BlockCursor(appConfig.getCursorBlinkRate(), fg));
+            }
+            else {
+                // boring cursor activated!
+                textPane.setCaret(new DefaultCaret());
+                textPane.getCaret().setBlinkRate(appConfig.getCursorBlinkRate());
+            }
+
+            // Restore the caret position after swapping out the caret, otherwise it will jump to the beginning:
+            textPane.getCaret().setDot(savedMark);
+            textPane.getCaret().moveDot(savedDot);
+
             repaint();
         }
         finally {
