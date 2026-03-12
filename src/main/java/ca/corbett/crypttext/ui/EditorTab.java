@@ -124,6 +124,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         textPane.getDocument().addUndoableEditListener(undoableEditListener);
         isDirty = false;
         tabHeader = new EditorTabHeader(this, name);
+        MainWindow.configureDropTarget(textPane, getMessageUtil());
         UIReloadAction.getInstance().registerReloadable(this);
         reloadUI(); // force an immediate update to pick up the correct theme and color scheme
     }
@@ -882,7 +883,7 @@ public class EditorTab extends JPanel implements UIReloadable {
 
     private MessageUtil getMessageUtil() {
         if (messageUtil == null) {
-            messageUtil = new MessageUtil(MainWindow.getInstance(), log);
+            messageUtil = new MessageUtil(ownerPane, log);
         }
         return messageUtil;
     }
