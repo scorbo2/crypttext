@@ -883,7 +883,7 @@ public class EditorTab extends JPanel implements UIReloadable {
 
     private MessageUtil getMessageUtil() {
         if (messageUtil == null) {
-            messageUtil = new MessageUtil(MainWindow.getInstance(), log);
+            messageUtil = new MessageUtil(ownerPane, log);
         }
         return messageUtil;
     }

@@ -330,7 +330,7 @@ public class EditorTabPane extends JTabbedPane {
 
     private MessageUtil getMessageUtil() {
         if (messageUtil == null) {
-            messageUtil = new MessageUtil(MainWindow.getInstance(), log);
+            messageUtil = new MessageUtil(this, log);
         }
         return messageUtil;
     }
