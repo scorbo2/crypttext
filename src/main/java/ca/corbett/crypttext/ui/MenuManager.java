@@ -142,6 +142,8 @@ public class MenuManager {
 
         editMenu.add(new JMenuItem(AppConfig.getInstance().getUndoAction()));
         editMenu.add(new JMenuItem(AppConfig.getInstance().getRedoAction()));
+        editMenu.add(new JMenuItem(AppConfig.getInstance().getFontSizeUpAction()));
+        editMenu.add(new JMenuItem(AppConfig.getInstance().getFontSizeDownAction()));
         editMenu.addSeparator();
 
         // Add any items to this list from our extensions, if any:
