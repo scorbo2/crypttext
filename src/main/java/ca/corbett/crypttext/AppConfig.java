@@ -26,6 +26,7 @@ import ca.corbett.extras.io.KeyStrokeManager;
 import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.ColorProperty;
+import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.DirectoryProperty;
 import ca.corbett.extras.properties.EnumProperty;
 import ca.corbett.extras.properties.FontProperty;
@@ -119,6 +120,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private BooleanProperty showLineNumbersProp;
     private FontProperty editorFontProp;
     private FontProperty gutterFontProp;
+    private BooleanProperty useBlockCursorProp;
+    private ComboProperty<String> blinkRateProp;
     private BooleanProperty overrideLafProp;
     private EnumProperty<ColorTheme> editorThemeProp;
     private ColorProperty editorBackgroundColorProp;
@@ -399,6 +402,42 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     }
 
     /**
+     * Reports whether the user wants to use our custom "block" cursor,
+     * or stick with the boring default one.
+     */
+    public boolean isUseBlockCursor() {
+        return useBlockCursorProp.getValue();
+    }
+
+    /**
+     * Reports the rate, in milliseconds, at which the cursor is
+     * configured to blink. A value of zero means "don't blink".
+     * This option applies to both the standard cursor and
+     * also our own custom BlockCursor.
+     */
+    public int getCursorBlinkRate() {
+        return switch (blinkRateProp.getSelectedIndex()) {
+            case 0 -> 0; // don't blink
+            case 1 -> 250; // fast
+            case 3 -> 1000; // slow
+            default -> 500; // normal
+        };
+    }
+
+    /**
+     * Reports whether the user has opted to override the Look and Feel and set
+     * custom colors. Generally, you don't need to worry about this! When you invoke
+     * the various getXColor() methods, they will automatically check this property
+     * and return the appropriate color based on the current Look and Feel or the
+     * user-selected custom color. But, if you need to know whether the
+     * current colors are coming from the Look and Feel or from user overrides,
+     * you can check this property.
+     */
+    public boolean isOverrideLookAndFeel() {
+        return overrideLafProp.getValue();
+    }
+
+    /**
      * Returns the configured editor background color.
      * This will come from the current Look and Feel if we are not set to override it.
      * Otherwise, this is the user-selected background color.
@@ -555,6 +594,17 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
                                                   "Show line numbers in editor",
                                                   true);
         props.add(showLineNumbersProp);
+
+        useBlockCursorProp = new BooleanProperty("UI.Editor.useBlockCursor",
+                                                 "Use block cursor in editor",
+                                                 false);
+        props.add(useBlockCursorProp);
+
+        List<String> options = List.of("Don't blink", "Fast", "Normal", "Slow");
+        blinkRateProp = new ComboProperty<>("UI.Editor.cursorBlinkRate",
+                                            "Blink rate:",
+                                            options, 0, false);
+        props.add(blinkRateProp);
 
         overrideLafProp = new BooleanProperty("UI.Editor.overrideLaF",
                                               "Override Look and Feel with custom editor colors",

@@ -22,6 +22,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.text.DefaultCaret;
 import javax.swing.undo.UndoManager;
 import java.awt.BorderLayout;
 import java.io.File;
@@ -573,6 +574,8 @@ public class EditorTab extends JPanel implements UIReloadable {
      */
     @Override
     public void reloadUI() {
+        final AppConfig appConfig = AppConfig.getInstance();
+
         // Weirdly, some of these calls will trigger a change event.
         // Example: textPane.setFont() schedules a changedUpdate via SwingUtilities.invokeLater
         // deep inside DefaultStyledDocument.styleChanged. That means the changedUpdate fires
@@ -581,14 +584,23 @@ public class EditorTab extends JPanel implements UIReloadable {
         // the style-change event and will therefore run after eventsEnabled has been checked.
         eventsEnabled = false;
         undoableEditListener.setEnabled(false);
-        undoManager.setLimit(AppConfig.getInstance().getUndoLimit());
+        undoManager.setLimit(appConfig.getUndoLimit());
         try {
-            scrollPane.setRowHeaderView(AppConfig.getInstance().isShowLineNumbers() ? gutter : null);
-            textPane.setFont(AppConfig.getInstance().getEditorFont());
-            gutter.setLineNumberFont(AppConfig.getInstance().getGutterFont());
+            scrollPane.setRowHeaderView(appConfig.isShowLineNumbers() ? gutter : null);
+            textPane.setFont(appConfig.getEditorFont());
+            gutter.setLineNumberFont(appConfig.getGutterFont());
             gutter.updateColors(); // tell our gutter to update its colors based on the current theme
-            textPane.setBackground(AppConfig.getInstance().getEditorBackgroundColor());
-            textPane.setForeground(AppConfig.getInstance().getEditorForegroundColor());
+            textPane.setBackground(appConfig.getEditorBackgroundColor());
+            textPane.setForeground(appConfig.getEditorForegroundColor());
+            textPane.setCaretColor(appConfig.getEditorForegroundColor());
+            if (appConfig.isOverrideLookAndFeel() && appConfig.isUseBlockCursor()) {
+                textPane.setCaret(new BlockCursor(appConfig.getCursorBlinkRate()));
+            }
+            else {
+                // boring cursor activated!
+                textPane.setCaret(new DefaultCaret());
+                textPane.getCaret().setBlinkRate(appConfig.getCursorBlinkRate());
+            }
             repaint();
         }
         finally {
