@@ -208,7 +208,8 @@ public class EditorTab extends JPanel implements UIReloadable {
      * works in general, but we'll give it a shot.
      */
     public void requestFocusInTextPane() {
-        textPane.requestFocusInWindow();
+        ownerPane.setSelectedComponent(this); // first, make sure we're the active tab, otherwise focus won't come to us
+        SwingUtilities.invokeLater(textPane::requestFocusInWindow);
     }
 
     /**
