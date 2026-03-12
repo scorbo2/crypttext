@@ -603,7 +603,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         List<String> options = List.of("Don't blink", "Fast", "Normal", "Slow");
         blinkRateProp = new ComboProperty<>("UI.Editor.cursorBlinkRate",
                                             "Blink rate:",
-                                            options, 0, false);
+                                            options, 2, false);
         props.add(blinkRateProp);
 
         overrideLafProp = new BooleanProperty("UI.Editor.overrideLaF",

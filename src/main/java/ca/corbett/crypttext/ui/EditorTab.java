@@ -593,6 +593,12 @@ public class EditorTab extends JPanel implements UIReloadable {
             textPane.setBackground(appConfig.getEditorBackgroundColor());
             textPane.setForeground(appConfig.getEditorForegroundColor());
             textPane.setCaretColor(appConfig.getEditorForegroundColor());
+
+            // Note these because swapping out the caret might reset them:
+            int savedDot = textPane.getCaret().getDot();
+            int savedMark = textPane.getCaret().getMark();
+
+            // Swap out the caret as needed:
             if (appConfig.isUseBlockCursor()) {
                 textPane.setCaret(new BlockCursor(appConfig.getCursorBlinkRate()));
             }
@@ -601,6 +607,11 @@ public class EditorTab extends JPanel implements UIReloadable {
                 textPane.setCaret(new DefaultCaret());
                 textPane.getCaret().setBlinkRate(appConfig.getCursorBlinkRate());
             }
+
+            // Restore the caret position after swapping out the caret, otherwise it will jump to the beginning:
+            textPane.getCaret().setDot(savedMark);
+            textPane.getCaret().moveDot(savedDot);
+
             repaint();
         }
         finally {

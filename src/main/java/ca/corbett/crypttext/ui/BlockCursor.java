@@ -7,7 +7,6 @@ import javax.swing.text.JTextComponent;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Rectangle;
-import java.util.logging.Logger;
 
 /**
  * A custom "block" cursor, for that old-school terminal feel.
@@ -16,10 +15,7 @@ import java.util.logging.Logger;
  */
 public class BlockCursor extends DefaultCaret {
 
-    private static final Logger log = Logger.getLogger(BlockCursor.class.getName());
-
     private final Timer blinkTimer;
-    private final int blinkRate;
 
     /**
      * Creates a new BlockCursor with the specified blink rate in milliseconds.
@@ -28,34 +24,38 @@ public class BlockCursor extends DefaultCaret {
      * @param blinkRate The blink rate in milliseconds, or zero/negative for no blinking.
      */
     public BlockCursor(int blinkRate) {
-        this.blinkRate = blinkRate;
-
         // The parent class's timer has strange behavior where the blink rate slows
         // down noticeably when no mouse or keyboard activity is happening in the text pane.
         // We can try to work around this by creating our own timer and bypassing
         // the RepaintManager's timer coalescing behavior, but in my testing,
         // this does not do much to fix the problem. It remains unsolved for now.
         setBlinkRate(0); // disable parent class's timer... we'll make our own
-        blinkTimer = new Timer(blinkRate, e -> {
-            setVisible(!isVisible());
-            if (getComponent() != null) {
-                getComponent().paintImmediately(x, y, width, height);
-            }
-        });
-        blinkTimer.setCoalesce(false); // don't skip missed ticks
+
+        if (blinkRate > 0) {
+            blinkTimer = new Timer(blinkRate, e -> {
+                if (getComponent() != null && getComponent().hasFocus()) {
+                    setVisible(!isVisible());
+                    getComponent().paintImmediately(x, y, width, height);
+                }
+            });
+            blinkTimer.setCoalesce(false); // don't skip missed ticks
+        }
+        else {
+            blinkTimer = null; // no timer needed if we're not blinking
+        }
     }
 
     @Override
     public void install(JTextComponent c) {
         super.install(c);
-        if (blinkRate > 0) { // 0 means "don't blink"
+        if (blinkTimer != null) {
             blinkTimer.start();
         }
     }
 
     @Override
     public void deinstall(JTextComponent c) {
-        if (blinkRate > 0) { // 0 means "don't blink", so our timer was never started
+        if (blinkTimer != null) {
             blinkTimer.stop();
         }
         super.deinstall(c);
