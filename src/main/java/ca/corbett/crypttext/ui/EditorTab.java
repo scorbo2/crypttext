@@ -593,7 +593,7 @@ public class EditorTab extends JPanel implements UIReloadable {
             textPane.setBackground(appConfig.getEditorBackgroundColor());
             textPane.setForeground(appConfig.getEditorForegroundColor());
             textPane.setCaretColor(appConfig.getEditorForegroundColor());
-            if (appConfig.isOverrideLookAndFeel() && appConfig.isUseBlockCursor()) {
+            if (appConfig.isUseBlockCursor()) {
                 textPane.setCaret(new BlockCursor(appConfig.getCursorBlinkRate()));
             }
             else {
