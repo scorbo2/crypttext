@@ -96,6 +96,7 @@ public class EditorTab extends JPanel implements UIReloadable {
     private CryptMetadata cryptMetadata;
     private boolean isDirty;
     private boolean eventsEnabled = true; // used to prevent firing events during programmatic text changes
+    private String cleanContents; // snapshot of memory contents at the last markClean() – used for undo/redo dirty tracking
 
     /**
      * Creates a new, empty editor tab with the given name.
@@ -139,6 +140,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         undoableEditListener = new GroupingUndoableEditListener(undoManager);
         textPane.getDocument().addUndoableEditListener(undoableEditListener);
         isDirty = false;
+        cleanContents = getMemoryContents(); // baseline: tab starts clean, so record current contents
         tabHeader = new EditorTabHeader(this, name);
         MainWindow.configureDropTarget(textPane, getMessageUtil());
         UIReloadAction.getInstance().registerReloadable(this);
@@ -204,6 +206,8 @@ public class EditorTab extends JPanel implements UIReloadable {
         undoableEditListener.flush(); // commit any in-progress group before undoing, so that undo will work as expected
         if (undoManager.canUndo()) {
             undoManager.undo();
+            // Re-evaluate dirty state after all document-change events have fired.
+            SwingUtilities.invokeLater(this::syncDirtyStateAfterUndoRedo);
         }
     }
 
@@ -214,6 +218,8 @@ public class EditorTab extends JPanel implements UIReloadable {
         undoableEditListener.flush(); // commit any in-progress group before redoing, so that redo will work as expected
         if (undoManager.canRedo()) {
             undoManager.redo();
+            // Re-evaluate dirty state after all document-change events have fired.
+            SwingUtilities.invokeLater(this::syncDirtyStateAfterUndoRedo);
         }
     }
 
@@ -588,8 +594,22 @@ public class EditorTab extends JPanel implements UIReloadable {
      */
     private void markClean() {
         isDirty = false;
+        cleanContents = getMemoryContents(); // update the baseline so undo/redo checks stay accurate
         tabHeader.updateLabel(name); // removes the visual dirty indicator
         tabHeader.resetIcon(); // swap icon colors for more visual indication of clean state
+    }
+
+    /**
+     * Called (via SwingUtilities.invokeLater) after an undo or redo operation so that all
+     * pending document-change events have already fired before we evaluate dirty state.
+     * If the current in-memory contents match the last-clean baseline the tab is marked clean;
+     * otherwise the DocListener has already taken care of marking it dirty, so nothing extra
+     * is needed in the "still dirty" branch.
+     */
+    private void syncDirtyStateAfterUndoRedo() {
+        if (getMemoryContents().equals(cleanContents)) {
+            markClean();
+        }
     }
 
     /**
