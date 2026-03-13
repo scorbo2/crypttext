@@ -87,7 +87,8 @@ class ImmersiveModeWindow extends JWindow {
             monitorIndex = 0; // Default to primary monitor if index is out of bounds
         }
 
-        log.info("I see that you have " + gs.length + " monitor(s) connected. " +
+        // For debugging monitor selection:
+        log.fine("I see that you have " + gs.length + " monitor(s) connected. " +
                          "Attempting to position immersive window on monitor index " + monitorIndex + ".");
 
         // Position ourselves for the whole screen:
@@ -97,7 +98,8 @@ class ImmersiveModeWindow extends JWindow {
         setLocation(bounds.x, bounds.y);
         setSize(bounds.width, bounds.height);
 
-        log.info("I've set location to (" + bounds.x + ", " + bounds.y + ") " +
+        // More monitor debugging:
+        log.fine("I've set location to (" + bounds.x + ", " + bounds.y + ") " +
                          "and size to (" + bounds.width + "x" + bounds.height + ").");
     }
 
