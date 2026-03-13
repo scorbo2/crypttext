@@ -45,7 +45,8 @@ class ImmersiveModeWindow extends JWindow {
         tabPane = new EditorTabPane();
         tabPane.setTabHeaderVisible(false);
         this.sourceTab = sourceTab;
-        this.clonedTab = new EditorTab(tabPane, sourceTab.getTabName(), sourceTab.getMemoryContents());
+        this.clonedTab = new EditorTab(tabPane, sourceTab.getTabName(), sourceTab.getDiskContents());
+        clonedTab.setMemoryContents(sourceTab.getMemoryContents()); // get the up-to-date content.
         tabPane.addTab(sourceTab.getTabName(), clonedTab);
         setLayout(new BorderLayout());
         add(tabPane, BorderLayout.CENTER);
