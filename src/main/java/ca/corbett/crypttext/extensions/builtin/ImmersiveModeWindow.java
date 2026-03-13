@@ -105,6 +105,33 @@ class ImmersiveModeWindow extends JWindow {
                          "and size to (" + bounds.width + "x" + bounds.height + ").");
     }
 
+    @Override
+    public void dispose() {
+        // Tear down content listeners between source and cloned tabs to avoid leaks.
+        if (sourceTab != null && sourceTabListener != null) {
+            sourceTab.removeContentChangeListener(sourceTabListener);
+            sourceTabListener = null;
+        }
+        if (clonedTab != null) {
+            if (clonedTabListener != null) {
+                clonedTab.removeContentChangeListener(clonedTabListener);
+                clonedTabListener = null;
+            }
+            // Ensure the cloned tab releases its own resources.
+            clonedTab.dispose();
+            clonedTab = null;
+        }
+
+        // Break references to the temporary EditorTabPane so any associated listeners
+        // can be garbage-collected once this window is disposed.
+        if (immersiveEditorTabPane != null) {
+            immersiveEditorTabPane.removeAll();
+            immersiveEditorTabPane = null;
+        }
+
+        super.dispose();
+    }
+
     /**
      * Make sure our two text panes are kept in sync with one another.
      */
