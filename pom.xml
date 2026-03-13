@@ -7,7 +7,7 @@
     <!-- This project was generated from the swing-extras Maven archetype 2.8.0 -->
     <groupId>ca.corbett</groupId>
     <artifactId>crypttext</artifactId>
-    <version>1.1-SNAPSHOT</version>
+    <version>1.1</version>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
