@@ -13,6 +13,8 @@ import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.logging.Logger;
 
 /**
@@ -139,10 +141,27 @@ class ImmersiveModeWindow extends JWindow {
         clonedTab.addContentChangeListener(clonedTabListener);
 
         // Also listen for the source tab closing, so we can close ourselves if that happens:
-        sourceTab.addTabClosedListener(e -> {
-            // Stop listening to the source tab, since we're about to close ourselves:
-            sourceTab.removeContentChangeListener(sourceTabListener);
+        final EditorTab.TabClosedListener tabClosedListener = e -> {
+            // Close this immersive window; cleanup will run in the windowClosed handler.
             dispose();
+        };
+        sourceTab.addTabClosedListener(tabClosedListener);
+
+        // Ensure that all listeners are removed when this window is disposed/closed,
+        // regardless of how it is closed (F11/ESC, tab close, etc.).
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                // Remove content-change listeners on both tabs:
+                if (sourceTabListener != null) {
+                    sourceTab.removeContentChangeListener(sourceTabListener);
+                }
+                if (clonedTabListener != null) {
+                    clonedTab.removeContentChangeListener(clonedTabListener);
+                }
+                // Remove the tab-closed listener from the source tab:
+                sourceTab.removeTabClosedListener(tabClosedListener);
+            }
         });
     }
 
