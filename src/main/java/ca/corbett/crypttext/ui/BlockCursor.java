@@ -72,7 +72,7 @@ public class BlockCursor extends DefaultCaret {
      */
     @Override
     public void damage(Rectangle r) {
-        if (r == null && getComponent() == null) {
+        if (r == null || getComponent() == null) {
             return;
         }
         x = r.x;

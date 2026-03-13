@@ -329,6 +329,16 @@ public final class MainWindow extends JFrame implements UIReloadable {
     }
 
     /**
+     * Allows direct access to our KeyStrokeManager.
+     * Extensions are strongly encouraged to expose KeyStrokeProperties
+     * via the usual property mechanism, rather than adding or modifying
+     * our KeyStrokeManager directly.
+     */
+    public KeyStrokeManager getKeyStrokeManager() {
+        return keyStrokeManager;
+    }
+
+    /**
      * Sets up our KeyStrokeManager with the appropriate KeyStrokes from app config.
      */
     private void setKeyStrokes() {

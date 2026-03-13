@@ -4,6 +4,7 @@ import ca.corbett.crypttext.Version;
 import ca.corbett.crypttext.crypt.CryptMetadata;
 import ca.corbett.crypttext.crypt.EncryptedText;
 import ca.corbett.crypttext.extensions.builtin.DirTreeExtension;
+import ca.corbett.crypttext.extensions.builtin.ImmersiveModeExtension;
 import ca.corbett.crypttext.extensions.builtin.StatusBarExtension;
 import ca.corbett.crypttext.extensions.builtin.TestExtension;
 import ca.corbett.crypttext.ui.TabStateManager;
@@ -66,6 +67,7 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
     public void loadAll() {
         // Load our built-in extensions first:
         addExtension(new DirTreeExtension(), true);
+        addExtension(new ImmersiveModeExtension(), true);
         addExtension(new StatusBarExtension(), true);
 
         // TestExtension is a bit special... we won't show it at all unless you've gone
