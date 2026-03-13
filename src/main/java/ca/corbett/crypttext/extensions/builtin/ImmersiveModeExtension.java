@@ -163,6 +163,7 @@ public class ImmersiveModeExtension extends CryptTextExtension implements Change
                 immersiveWindow.setVisible(false);
                 immersiveWindow.dispose();
                 immersiveWindow = null;
+                isImmersiveMode = false;
                 toggleMenuItem.setSelected(false);
             }
         }
