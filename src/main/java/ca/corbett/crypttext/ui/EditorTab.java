@@ -773,7 +773,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         // Prompt for a password if we don't already have one:
         String password = defaultCryptMetadata.getPassword();
         if (password == null || password.isEmpty()) {
-            password = getMessageUtil().askText("Enter password:", "");
+            password = getMessageUtil().askText("Encrypt", "Enter password:", "");
             if (password == null) {
                 return null; // user canceled the prompt, so abort the encryption action
             }
@@ -822,7 +822,7 @@ public class EditorTab extends JPanel implements UIReloadable {
 
         // If the password is not already set, prompt the user for it:
         if (defaultCryptMetadata.getPassword() == null || defaultCryptMetadata.getPassword().isEmpty()) {
-            String password = getMessageUtil().askText("Enter password:", "");
+            String password = getMessageUtil().askText("Decrypt", "Enter password:", "");
             if (password == null) {
                 // User canceled the prompt, so just skip it.
                 return null;
