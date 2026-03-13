@@ -31,7 +31,7 @@ This is the best option, as you get an installer script that sets everything up 
 
 - desktop shortcut
 - shell integration (for right-clicking on text files and selecting "Open with CryptText")
-- launcher script in your PATH (so you can run `crypttext` from the terminal)
+- launcher script in your PATH (so you can run `CryptText` from the terminal)
 - uninstaller script that removes all of the above
 
 ### Option 2: Build from source
