@@ -1,7 +1,7 @@
 CryptText Release Notes
 ==============================================
 
-Version 1.1 - [TODO release date here]
+Version 1.1 - [2026-03-13] Maintenance release
   #69 - Make undo/redo smarter about updating clean/dirty status.
   #65 - Better cursor handling with custom themes.
   #62 - DirTree: more config options.
