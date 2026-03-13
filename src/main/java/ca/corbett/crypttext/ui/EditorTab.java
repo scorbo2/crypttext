@@ -30,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 
 /**
@@ -113,9 +114,9 @@ public class EditorTab extends JPanel implements UIReloadable {
         if (diskContents == null) {
             throw new IllegalArgumentException("diskContents cannot be null");
         }
-        this.positionListeners = new ArrayList<>();
-        this.contentChangeListeners = new ArrayList<>();
-        this.tabClosedListeners = new ArrayList<>();
+        this.positionListeners = new CopyOnWriteArrayList<>();
+        this.contentChangeListeners = new CopyOnWriteArrayList<>();
+        this.tabClosedListeners = new CopyOnWriteArrayList<>();
         this.ownerPane = ownerPane;
         this.name = name;
         textPane = new JTextPane();
