@@ -2,11 +2,18 @@
 
 ## What is this?
 
-CryptText is a user-friendly text editor that provides simple encryption and decryption options.
-Users can easily encrypt text files using a password, without knowing or caring about
-the underlying encryption details.
+CryptText is a user-friendly, extensible text editor with built-in encryption and decryption.
+Users can protect text files with a password without needing to know or care about the
+underlying cryptography details.
 
-![CryptText Screenshot](src/main/resources/ca/corbett/crypttext/screenshots/crypttext1.jpg)
+Highlights in the 1.1 release include:
+
+- Undo/redo support with configurable history depth
+- Drag-and-drop opening from your file manager
+- Live editor font size increase/decrease shortcuts
+- Optional block cursor and configurable blink rate
+- Interactive line-number gutter for selecting lines
+- A built-in immersive full-screen writing mode
 
 ![CryptText Screenshot](src/main/resources/ca/corbett/crypttext/screenshots/crypttext2.jpg)
 
@@ -16,9 +23,9 @@ the underlying encryption details.
 
 If you are running on Linux, and have Java 17 or higher installed, you can download the installer tarball:
 
-- [CryptText Installer](https://www.corbett.ca/apps/CryptText-1.0.tar.gz)
+- [CryptText Installer](https://www.corbett.ca/apps/CryptText-1.1.tar.gz)
 - Size: 17MB
-- Sha256: `4283a16d6baef9968c9496b87719ba8c46234a9eca09ed477b738148680486e8`
+- Sha256: `d5aa6243dd0c444f319d4b94ed2aac7a2d96b041220bf411f8e8b22eb25e5631`
 
 This is the best option, as you get an installer script that sets everything up for you:
 
@@ -36,9 +43,9 @@ git clone https://github.com/scorbo2/crypttext.git
 cd crypttext
 mvn clean package
 
-# Run the executable jar:
+# Run the executable jar that Maven created:
 cd target
-java -jar crypttext-1.0.jar
+java -jar crypttext-1.1.jar
 ```
 
 ## User guide
@@ -46,6 +53,26 @@ java -jar crypttext-1.0.jar
 ### General usage
 
 CryptText can be used as a regular text editor. Files can be opened or created in editor tabs.
+You can open files from the File menu, by passing file paths on the command line, from the DirTree
+extension, or by dragging files in from your desktop/file manager.
+
+### Selecting lines from the gutter
+
+If line numbers are enabled, clicking a line number selects that whole line. Clicking and dragging
+in the gutter selects a range of lines, which is handy for quick block selection.
+
+### Opening files via drag and drop
+
+You can drag one or more files from your OS file manager directly onto the main window or an editor tab.
+CryptText validates that dropped items are text files before opening them.
+
+### Undo, redo, and font size shortcuts
+
+CryptText 1.1 adds per-tab undo/redo support. By default, `Ctrl+Z` undoes the last change and `Ctrl+Y`
+redoes it.
+
+You can also adjust the editor font size on the fly with `Ctrl+Equals` and `Ctrl+Minus`. These changes
+take effect immediately and are saved to your preferences.
 
 ### Encrypting
 
@@ -102,6 +129,8 @@ dialog (Ctrl+P by default, or via the Edit menu):
 | Editor Font                                      | The font used for text in the editor area.                                                                                                                                       | Monospaced 14pt |
 | Gutter Font                                      | The font used for the line-number gutter alongside the editor.                                                                                                                   | Monospaced 12pt |
 | Show line numbers in editor                      | Toggles the line-number gutter on or off.                                                                                                                                        | Enabled         |
+| Use block cursor in editor                       | Replaces the usual caret with a block-style cursor for a more terminal-like editing feel.                                                                                        | Disabled        |
+| Blink rate                                       | Controls cursor blink behavior. Choices are **Don't blink**, **Fast**, **Normal**, and **Slow**.                                                                                 | Normal          |
 | Override Look and Feel with custom editor colors | When enabled, the options below become active and let you pick custom editor colors independent of the current Look and Feel.                                                    | Disabled        |
 | Set from theme                                   | A quick-pick dropdown to apply a preset color scheme. Built-in themes include **Matrix**, **Dark**, **Very dark**, **Shades of grey**, **Got the blues**, and **Hot dog stand**. | Matrix          |
 | Editor bg / Editor fg                            | Background and foreground colors for the editor area (only active when the override option above is enabled).                                                                    | Theme defaults  |
@@ -119,31 +148,36 @@ You can also override the Look and Feel and select custom color themes. Here is 
 | Tab Icon Size (px)                                  | The size in pixels of the padlock icons on the tabs.                                                                      | 16      |
 | Exit application when the last editor tab is closed | When enabled, closing the last open tab exits the application. When disabled, you are left with a blank window.           | Enabled |
 | Restore previously-open tabs on startup             | When enabled, the files that were open the last time you closed CryptText are automatically re-opened on the next launch. | Enabled |
+| Undo levels                                         | The maximum undo history to keep for each editor tab. Set to `0` to disable undo history entirely.                        | 100     |
 
 #### Keyboard shortcuts
 
 All keyboard shortcuts can be customized from the **Keystrokes** tab of the Properties dialog. The defaults are:
 
-| Action            | Default Shortcut |
-|-------------------|------------------|
-| New Tab           | Ctrl+N           |
-| Open File         | Ctrl+O           |
-| Save File         | Ctrl+S           |
-| Save File As      | Ctrl+Shift+S     |
-| Save Unencrypted  | Ctrl+Shift+1     |
-| Encrypt/Decrypt   | Ctrl+D           |
-| Forget Password   | F7               |
-| Properties Dialog | Ctrl+P           |
-| Extension Manager | Ctrl+E           |
-| Log Console       | Ctrl+L           |
-| About Dialog      | Ctrl+A           |
-| Exit Application  | Ctrl+Q           |
+| Action             | Default Shortcut |
+|--------------------|------------------|
+| New Tab            | Ctrl+N           |
+| Open File          | Ctrl+O           |
+| Save File          | Ctrl+S           |
+| Save File As       | Ctrl+Shift+S     |
+| Save Unencrypted   | Ctrl+Shift+1     |
+| Undo               | Ctrl+Z           |
+| Redo               | Ctrl+Y           |
+| Increase Font Size | Ctrl+Equals      |
+| Decrease Font Size | Ctrl+Minus       |
+| Encrypt/Decrypt    | Ctrl+D           |
+| Forget Password    | F7               |
+| Properties Dialog  | Ctrl+P           |
+| Extension Manager  | Ctrl+E           |
+| Log Console        | Ctrl+L           |
+| About Dialog       | Ctrl+A           |
+| Exit Application   | Ctrl+Q           |
 
 Most shortcuts can be set to blank (effectively disabled). Save File and Save File As cannot be disabled.
 
 ### Built-in extensions
 
-There are two built-in application extensions that are enabled by default. Both can be configured from their own
+There are three built-in application extensions that are enabled by default. All can be configured from their own
 tabs in the Properties dialog, and can be enabled or disabled via the Extension Manager (Ctrl+E):
 
 #### StatusBar
@@ -166,10 +200,24 @@ The status bar also always shows the current cursor position (line and column nu
 Shows a directory tree panel on the left side of the editor for filesystem navigation. Double-clicking a file
 in the tree opens it in a new editor tab (text files only).
 
-| Option                     | Description                                                                           | Default |
-|----------------------------|---------------------------------------------------------------------------------------|---------|
-| Show directory tree        | Toggles the directory tree panel on or off.                                           | Enabled |
-| Show/hide DirTree shortcut | Keyboard shortcut to toggle the directory tree without opening the Properties dialog. | F4      |
+| Option                            | Description                                                                              | Default  |
+|-----------------------------------|------------------------------------------------------------------------------------------|----------|
+| Show directory tree               | Toggles the directory tree panel on or off.                                              | Enabled  |
+| Show hidden files and directories | Includes hidden files and directories in the tree.                                       | Disabled |
+| Tree width                        | Sets the width of the DirTree panel in pixels.                                           | 250      |
+| File filter                       | Comma-separated file extensions to display, without dots. Leave blank to show all files. | `txt`    |
+| Show/hide DirTree shortcut        | Keyboard shortcut to toggle the directory tree without opening the Properties dialog.    | F4       |
+
+#### Immersive Mode
+
+Immersive Mode opens the current editor in a separate full-screen window and hides the rest of the UI for
+a distraction-free writing or reading experience. This is especially useful on multi-monitor setups.
+
+| Option         | Description                                           | Default         |
+|----------------|-------------------------------------------------------|-----------------|
+| Immersive Mode | Keyboard shortcut to toggle immersive mode on or off. | F11             |
+| Exit immersion | Keyboard shortcut to leave immersive mode.            | Esc             |
+| Monitor        | Which monitor to use for the immersive window.        | Primary monitor |
 
 ### Log Console
 
