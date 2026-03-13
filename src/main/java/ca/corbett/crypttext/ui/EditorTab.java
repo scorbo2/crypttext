@@ -30,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 
 /**
@@ -67,11 +68,22 @@ public class EditorTab extends JPanel implements UIReloadable {
         void onContentChange(String newContent);
     }
 
+    /**
+     * Listeners can subscribe to receive notification when this tab is closed.
+     * Note that this event is not vetoable. Listeners are notified AFTER the
+     * tab is closed. This is informational.
+     */
+    @FunctionalInterface
+    public interface TabClosedListener {
+        void onTabClosed(EditorTab tab);
+    }
+
     private static final Logger log = Logger.getLogger(EditorTab.class.getName());
     private MessageUtil messageUtil;
 
     private final List<PositionListener> positionListeners;
     private final List<ContentChangeListener> contentChangeListeners;
+    private final List<TabClosedListener> tabClosedListeners;
     private final EditorTabPane ownerPane;
     private final JTextPane textPane; // stores our memoryContents
     private final JScrollPane scrollPane;
@@ -102,8 +114,9 @@ public class EditorTab extends JPanel implements UIReloadable {
         if (diskContents == null) {
             throw new IllegalArgumentException("diskContents cannot be null");
         }
-        this.positionListeners = new ArrayList<>();
-        this.contentChangeListeners = new ArrayList<>();
+        this.positionListeners = new CopyOnWriteArrayList<>();
+        this.contentChangeListeners = new CopyOnWriteArrayList<>();
+        this.tabClosedListeners = new CopyOnWriteArrayList<>();
         this.ownerPane = ownerPane;
         this.name = name;
         textPane = new JTextPane();
@@ -252,6 +265,9 @@ public class EditorTab extends JPanel implements UIReloadable {
         if (ownerPane.closeTab(this)) {
             // Our request to close the tab was not canceled or vetoed, so we are actually closing:
             dispose();
+
+            // Notify listeners:
+            fireTabClosedEvent();
         }
     }
 
@@ -515,6 +531,15 @@ public class EditorTab extends JPanel implements UIReloadable {
     }
 
     /**
+     * Allows direct access to our enclosed JTextPane.
+     * It's a bit of a design smell to expose this, but some
+     * extensions may need to access it directly, for customization purposes.
+     */
+    public JTextPane getTextPane() {
+        return textPane;
+    }
+
+    /**
      * Reports whether this tab has unsaved changes.
      */
     public boolean isDirty() {
@@ -535,6 +560,16 @@ public class EditorTab extends JPanel implements UIReloadable {
      * Does NOT commit anything to disk.
      */
     public void setMemoryContents(String newText) {
+        if (newText == null) {
+            newText = "";
+        }
+
+        // Wonky case: if we are given text that exactly matches our current contents, do nothing:
+        if (newText.equals(getMemoryContents())) {
+            return;
+        }
+
+        // Otherwise, accept the new value and mark ourselves dirty:
         textPane.setText(newText);
         markDirty();
     }
@@ -881,6 +916,39 @@ public class EditorTab extends JPanel implements UIReloadable {
         catch (Exception e) {
             // If a listener throws a runtime exception, don't let it interfere with this EditorTab:
             log.warning("Failed to fire content changed event: " + e.getMessage());
+        }
+    }
+
+    public void addTabClosedListener(TabClosedListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener cannot be null");
+        }
+        tabClosedListeners.add(listener);
+    }
+
+    public void removeTabClosedListener(TabClosedListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener cannot be null");
+        }
+        tabClosedListeners.remove(listener);
+    }
+
+    private void fireTabClosedEvent() {
+        // If no one is listening, don't bother:
+        if (tabClosedListeners.isEmpty()) {
+            return;
+        }
+
+        // Notify listeners:
+        try {
+            // Iterate over a copy of the list to avoid ConcurrentModificationExceptions:
+            for (TabClosedListener listener : new ArrayList<>(tabClosedListeners)) {
+                listener.onTabClosed(this);
+            }
+        }
+        catch (Exception e) {
+            // If a listener throws a runtime exception, don't let it interfere with this EditorTab:
+            log.warning("Failed to fire tab closed event: " + e.getMessage());
         }
     }
 
