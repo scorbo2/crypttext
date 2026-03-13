@@ -10,7 +10,7 @@
 FORMAT="tarball"
 
 APPLICATION="CryptText"
-VERSION="1.0"
+VERSION="1.1"
 
 CATEGORY="TextEditor"
 

@@ -22,11 +22,15 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.text.DefaultCaret;
+import javax.swing.undo.UndoManager;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 
 /**
@@ -64,21 +68,35 @@ public class EditorTab extends JPanel implements UIReloadable {
         void onContentChange(String newContent);
     }
 
+    /**
+     * Listeners can subscribe to receive notification when this tab is closed.
+     * Note that this event is not vetoable. Listeners are notified AFTER the
+     * tab is closed. This is informational.
+     */
+    @FunctionalInterface
+    public interface TabClosedListener {
+        void onTabClosed(EditorTab tab);
+    }
+
     private static final Logger log = Logger.getLogger(EditorTab.class.getName());
     private MessageUtil messageUtil;
 
     private final List<PositionListener> positionListeners;
     private final List<ContentChangeListener> contentChangeListeners;
+    private final List<TabClosedListener> tabClosedListeners;
     private final EditorTabPane ownerPane;
     private final JTextPane textPane; // stores our memoryContents
     private final JScrollPane scrollPane;
     private final LineNumberGutter gutter;
     private final EditorTabHeader tabHeader;
+    private final UndoManager undoManager;
+    private final GroupingUndoableEditListener undoableEditListener;
     private String name;
     private Text diskContents;
     private CryptMetadata cryptMetadata;
     private boolean isDirty;
     private boolean eventsEnabled = true; // used to prevent firing events during programmatic text changes
+    private String cleanContents; // snapshot of memory contents at the last markClean() – used for undo/redo dirty tracking
 
     /**
      * Creates a new, empty editor tab with the given name.
@@ -97,8 +115,9 @@ public class EditorTab extends JPanel implements UIReloadable {
         if (diskContents == null) {
             throw new IllegalArgumentException("diskContents cannot be null");
         }
-        this.positionListeners = new ArrayList<>();
-        this.contentChangeListeners = new ArrayList<>();
+        this.positionListeners = new CopyOnWriteArrayList<>();
+        this.contentChangeListeners = new CopyOnWriteArrayList<>();
+        this.tabClosedListeners = new CopyOnWriteArrayList<>();
         this.ownerPane = ownerPane;
         this.name = name;
         textPane = new JTextPane();
@@ -113,10 +132,17 @@ public class EditorTab extends JPanel implements UIReloadable {
         add(wrapperPanel, BorderLayout.CENTER);
         this.diskContents = diskContents;
         textPane.setText(this.diskContents.getText()); // initial value
+        textPane.setCaretPosition(0); // move caret to beginning of whatever text we just loaded.
         this.cryptMetadata = generateCryptMetadata();
         textPane.getDocument().addDocumentListener(new DocListener());
+        undoManager = new UndoManager();
+        undoManager.setLimit(AppConfig.getInstance().getUndoLimit());
+        undoableEditListener = new GroupingUndoableEditListener(undoManager);
+        textPane.getDocument().addUndoableEditListener(undoableEditListener);
         isDirty = false;
+        cleanContents = getMemoryContents(); // baseline: tab starts clean, so record current contents
         tabHeader = new EditorTabHeader(this, name);
+        MainWindow.configureDropTarget(textPane, getMessageUtil());
         UIReloadAction.getInstance().registerReloadable(this);
         reloadUI(); // force an immediate update to pick up the correct theme and color scheme
     }
@@ -174,6 +200,40 @@ public class EditorTab extends JPanel implements UIReloadable {
     }
 
     /**
+     * Undoes the last edit in this editor tab, if possible.
+     */
+    public void undo() {
+        undoableEditListener.flush(); // commit any in-progress group before undoing, so that undo will work as expected
+        if (undoManager.canUndo()) {
+            undoManager.undo();
+            // Re-evaluate dirty state after all document-change events have fired.
+            SwingUtilities.invokeLater(this::syncDirtyStateAfterUndoRedo);
+        }
+    }
+
+    /**
+     * Redoes the last undone edit in this editor tab, if possible.
+     */
+    public void redo() {
+        undoableEditListener.flush(); // commit any in-progress group before redoing, so that redo will work as expected
+        if (undoManager.canRedo()) {
+            undoManager.redo();
+            // Re-evaluate dirty state after all document-change events have fired.
+            SwingUtilities.invokeLater(this::syncDirtyStateAfterUndoRedo);
+        }
+    }
+
+    /**
+     * Invoke this to try to set the keyboard focus to the text pane in this editor tab.
+     * This is not guaranteed to work, just because of the way the focus system
+     * works in general, but we'll give it a shot.
+     */
+    public void requestFocusInTextPane() {
+        ownerPane.setSelectedComponent(this); // first, make sure we're the active tab, otherwise focus won't come to us
+        SwingUtilities.invokeLater(textPane::requestFocusInWindow);
+    }
+
+    /**
      * Updates the name of this tab.
      */
     public void setTabName(String newName) {
@@ -211,6 +271,9 @@ public class EditorTab extends JPanel implements UIReloadable {
         if (ownerPane.closeTab(this)) {
             // Our request to close the tab was not canceled or vetoed, so we are actually closing:
             dispose();
+
+            // Notify listeners:
+            fireTabClosedEvent();
         }
     }
 
@@ -219,6 +282,8 @@ public class EditorTab extends JPanel implements UIReloadable {
      */
     public void dispose() {
         UIReloadAction.getInstance().unregisterReloadable(this); // stop listening
+        undoableEditListener.flush(); // commit any pending group and stop the timer
+        textPane.getDocument().removeUndoableEditListener(undoableEditListener);
     }
 
     /**
@@ -472,6 +537,15 @@ public class EditorTab extends JPanel implements UIReloadable {
     }
 
     /**
+     * Allows direct access to our enclosed JTextPane.
+     * It's a bit of a design smell to expose this, but some
+     * extensions may need to access it directly, for customization purposes.
+     */
+    public JTextPane getTextPane() {
+        return textPane;
+    }
+
+    /**
      * Reports whether this tab has unsaved changes.
      */
     public boolean isDirty() {
@@ -492,6 +566,16 @@ public class EditorTab extends JPanel implements UIReloadable {
      * Does NOT commit anything to disk.
      */
     public void setMemoryContents(String newText) {
+        if (newText == null) {
+            newText = "";
+        }
+
+        // Wonky case: if we are given text that exactly matches our current contents, do nothing:
+        if (newText.equals(getMemoryContents())) {
+            return;
+        }
+
+        // Otherwise, accept the new value and mark ourselves dirty:
         textPane.setText(newText);
         markDirty();
     }
@@ -510,8 +594,22 @@ public class EditorTab extends JPanel implements UIReloadable {
      */
     private void markClean() {
         isDirty = false;
+        cleanContents = getMemoryContents(); // update the baseline so undo/redo checks stay accurate
         tabHeader.updateLabel(name); // removes the visual dirty indicator
         tabHeader.resetIcon(); // swap icon colors for more visual indication of clean state
+    }
+
+    /**
+     * Called (via SwingUtilities.invokeLater) after an undo or redo operation so that all
+     * pending document-change events have already fired before we evaluate dirty state.
+     * If the current in-memory contents match the last-clean baseline the tab is marked clean;
+     * otherwise the DocListener has already taken care of marking it dirty, so nothing extra
+     * is needed in the "still dirty" branch.
+     */
+    private void syncDirtyStateAfterUndoRedo() {
+        if (getMemoryContents().equals(cleanContents)) {
+            markClean();
+        }
     }
 
     /**
@@ -532,6 +630,8 @@ public class EditorTab extends JPanel implements UIReloadable {
      */
     @Override
     public void reloadUI() {
+        final AppConfig appConfig = AppConfig.getInstance();
+
         // Weirdly, some of these calls will trigger a change event.
         // Example: textPane.setFont() schedules a changedUpdate via SwingUtilities.invokeLater
         // deep inside DefaultStyledDocument.styleChanged. That means the changedUpdate fires
@@ -539,17 +639,43 @@ public class EditorTab extends JPanel implements UIReloadable {
         // The fix is to re-enable events inside our own invokeLater, so it is queued AFTER
         // the style-change event and will therefore run after eventsEnabled has been checked.
         eventsEnabled = false;
+        undoableEditListener.setEnabled(false);
+        undoManager.setLimit(appConfig.getUndoLimit());
         try {
-            scrollPane.setRowHeaderView(AppConfig.getInstance().isShowLineNumbers() ? gutter : null);
-            textPane.setFont(AppConfig.getInstance().getEditorFont());
-            gutter.setLineNumberFont(AppConfig.getInstance().getGutterFont());
+            scrollPane.setRowHeaderView(appConfig.isShowLineNumbers() ? gutter : null);
+            textPane.setFont(appConfig.getEditorFont());
+            gutter.setLineNumberFont(appConfig.getGutterFont());
             gutter.updateColors(); // tell our gutter to update its colors based on the current theme
-            textPane.setBackground(AppConfig.getInstance().getEditorBackgroundColor());
-            textPane.setForeground(AppConfig.getInstance().getEditorForegroundColor());
+            Color fg = appConfig.getEditorForegroundColor();
+            textPane.setBackground(appConfig.getEditorBackgroundColor());
+            textPane.setForeground(fg);
+            textPane.setCaretColor(fg);
+
+            // Note these because swapping out the caret might reset them:
+            int savedDot = textPane.getCaret().getDot();
+            int savedMark = textPane.getCaret().getMark();
+
+            // Swap out the caret as needed:
+            if (appConfig.isUseBlockCursor()) {
+                textPane.setCaret(new BlockCursor(appConfig.getCursorBlinkRate(), fg));
+            }
+            else {
+                // boring cursor activated!
+                textPane.setCaret(new DefaultCaret());
+                textPane.getCaret().setBlinkRate(appConfig.getCursorBlinkRate());
+            }
+
+            // Restore the caret position after swapping out the caret, otherwise it will jump to the beginning:
+            textPane.getCaret().setDot(savedMark);
+            textPane.getCaret().moveDot(savedDot);
+
             repaint();
         }
         finally {
-            SwingUtilities.invokeLater(() -> eventsEnabled = true);
+            SwingUtilities.invokeLater(() -> {
+                eventsEnabled = true;
+                undoableEditListener.setEnabled(true);
+            });
         }
 
         // Note: our EditorTabHeader is updated via MainWindow's reloadUI handler,
@@ -647,7 +773,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         // Prompt for a password if we don't already have one:
         String password = defaultCryptMetadata.getPassword();
         if (password == null || password.isEmpty()) {
-            password = getMessageUtil().askText("Enter password:", "");
+            password = getMessageUtil().askText("Encrypt", "Enter password:", "");
             if (password == null) {
                 return null; // user canceled the prompt, so abort the encryption action
             }
@@ -696,7 +822,7 @@ public class EditorTab extends JPanel implements UIReloadable {
 
         // If the password is not already set, prompt the user for it:
         if (defaultCryptMetadata.getPassword() == null || defaultCryptMetadata.getPassword().isEmpty()) {
-            String password = getMessageUtil().askText("Enter password:", "");
+            String password = getMessageUtil().askText("Decrypt", "Enter password:", "");
             if (password == null) {
                 // User canceled the prompt, so just skip it.
                 return null;
@@ -813,6 +939,39 @@ public class EditorTab extends JPanel implements UIReloadable {
         }
     }
 
+    public void addTabClosedListener(TabClosedListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener cannot be null");
+        }
+        tabClosedListeners.add(listener);
+    }
+
+    public void removeTabClosedListener(TabClosedListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener cannot be null");
+        }
+        tabClosedListeners.remove(listener);
+    }
+
+    private void fireTabClosedEvent() {
+        // If no one is listening, don't bother:
+        if (tabClosedListeners.isEmpty()) {
+            return;
+        }
+
+        // Notify listeners:
+        try {
+            // Iterate over a copy of the list to avoid ConcurrentModificationExceptions:
+            for (TabClosedListener listener : new ArrayList<>(tabClosedListeners)) {
+                listener.onTabClosed(this);
+            }
+        }
+        catch (Exception e) {
+            // If a listener throws a runtime exception, don't let it interfere with this EditorTab:
+            log.warning("Failed to fire tab closed event: " + e.getMessage());
+        }
+    }
+
     /**
      * A very simple DocumentListener that will mark this editor tab as dirty
      * whenever any change is made.
@@ -848,7 +1007,7 @@ public class EditorTab extends JPanel implements UIReloadable {
 
     private MessageUtil getMessageUtil() {
         if (messageUtil == null) {
-            messageUtil = new MessageUtil(MainWindow.getInstance(), log);
+            messageUtil = new MessageUtil(ownerPane, log);
         }
         return messageUtil;
     }

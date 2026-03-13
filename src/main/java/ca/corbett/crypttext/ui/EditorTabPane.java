@@ -8,8 +8,8 @@ import ca.corbett.crypttext.text.Text;
 import ca.corbett.crypttext.text.TextManager;
 import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.MessageUtil;
+import ca.corbett.extras.ToggleableTabbedPane;
 
-import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import java.awt.Component;
 import java.io.File;
@@ -37,7 +37,7 @@ import java.util.logging.Logger;
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
-public class EditorTabPane extends JTabbedPane {
+public class EditorTabPane extends ToggleableTabbedPane {
 
     public static final String DEFAULT_TAB_NAME = "Untitled";
 
@@ -95,6 +95,7 @@ public class EditorTabPane extends JTabbedPane {
             if (tab instanceof EditorTab editorTab) {
                 if (editorTab.getDiskContents().isSameSourceFile(text)) {
                     setSelectedIndex(i);
+                    editorTab.requestFocusInTextPane();
                     return;
                 }
             }
@@ -105,6 +106,7 @@ public class EditorTabPane extends JTabbedPane {
         editorTabs.add(editorTab);
         addTab(title, editorTab.getIcon(), editorTab);
         setTabComponentAt(getTabCount() - 1, editorTab.getTabHeader());
+        editorTab.requestFocusInTextPane();
 
         // If this isn't a scratch file, add it to the "recent files" list:
         if (!editorTab.isScratchFile()) {
@@ -330,7 +332,7 @@ public class EditorTabPane extends JTabbedPane {
 
     private MessageUtil getMessageUtil() {
         if (messageUtil == null) {
-            messageUtil = new MessageUtil(MainWindow.getInstance(), log);
+            messageUtil = new MessageUtil(this, log);
         }
         return messageUtil;
     }

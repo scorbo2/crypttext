@@ -7,14 +7,18 @@ import ca.corbett.crypttext.ui.actions.AboutAction;
 import ca.corbett.crypttext.ui.actions.CryptAction;
 import ca.corbett.crypttext.ui.actions.ExitAction;
 import ca.corbett.crypttext.ui.actions.ExtensionManagerAction;
+import ca.corbett.crypttext.ui.actions.FontSizeDownAction;
+import ca.corbett.crypttext.ui.actions.FontSizeUpAction;
 import ca.corbett.crypttext.ui.actions.ForgetPasswordAction;
 import ca.corbett.crypttext.ui.actions.LogConsoleAction;
 import ca.corbett.crypttext.ui.actions.NewTabAction;
 import ca.corbett.crypttext.ui.actions.OpenFileAction;
 import ca.corbett.crypttext.ui.actions.PropertiesAction;
+import ca.corbett.crypttext.ui.actions.RedoAction;
 import ca.corbett.crypttext.ui.actions.SaveAction;
 import ca.corbett.crypttext.ui.actions.SaveAsAction;
 import ca.corbett.crypttext.ui.actions.SaveUnencryptedAction;
+import ca.corbett.crypttext.ui.actions.UndoAction;
 import ca.corbett.extensions.AppProperties;
 import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.gradient.ColorSelectionType;
@@ -22,6 +26,7 @@ import ca.corbett.extras.io.KeyStrokeManager;
 import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.ColorProperty;
+import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.DirectoryProperty;
 import ca.corbett.extras.properties.EnumProperty;
 import ca.corbett.extras.properties.FontProperty;
@@ -87,6 +92,10 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private static final String KEY_SAVE_FILE = KEYSTROKE_PREFIX + "General.saveFile";
     private static final String KEY_SAVE_FILE_AS = KEYSTROKE_PREFIX + "General.saveFileAs";
     private static final String KEY_SAVE_UNENCRYPTED = KEYSTROKE_PREFIX + "General.saveUnencrypted";
+    private static final String KEY_UNDO = KEYSTROKE_PREFIX + "General.undo";
+    private static final String KEY_REDO = KEYSTROKE_PREFIX + "General.redo";
+    private static final String KEY_FONT_SIZE_UP = KEYSTROKE_PREFIX + "General.fontSizeUp";
+    private static final String KEY_FONT_SIZE_DOWN = KEYSTROKE_PREFIX + "General.fontSizeDown";
     private static final String KEY_CRYPT = KEYSTROKE_PREFIX + "General.crypt";
     private static final String KEY_FORGET_PASSWORD = KEYSTROKE_PREFIX + "General.forgetPassword";
     private static final String KEY_PROPERTIES = KEYSTROKE_PREFIX + "General.properties";
@@ -102,6 +111,7 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private BooleanProperty enableSingleInstance;
     private BooleanProperty showFullPathInTitleProp;
     private IntegerProperty recentFilesLimitProp;
+    private IntegerProperty undoLimitProp;
     private BooleanProperty enableTabLockIconsProp;
     private IntegerProperty tabIconSizeProp;
     private BooleanProperty closeLastTabExitsProp;
@@ -110,6 +120,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private BooleanProperty showLineNumbersProp;
     private FontProperty editorFontProp;
     private FontProperty gutterFontProp;
+    private BooleanProperty useBlockCursorProp;
+    private ComboProperty<String> blinkRateProp;
     private BooleanProperty overrideLafProp;
     private EnumProperty<ColorTheme> editorThemeProp;
     private ColorProperty editorBackgroundColorProp;
@@ -127,6 +139,10 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     private Action saveFileAction;
     private Action saveFileAsAction;
     private Action saveUnencryptedAction;
+    private Action undoAction;
+    private Action redoAction;
+    private Action fontSizeUpAction;
+    private Action fontSizeDownAction;
     private Action cryptAction;
     private Action forgetPasswordAction;
     private Action propertiesAction;
@@ -196,6 +212,22 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         return saveUnencryptedAction;
     }
 
+    public Action getUndoAction() {
+        return undoAction;
+    }
+
+    public Action getRedoAction() {
+        return redoAction;
+    }
+
+    public Action getFontSizeUpAction() {
+        return fontSizeUpAction;
+    }
+
+    public Action getFontSizeDownAction() {
+        return fontSizeDownAction;
+    }
+
     public Action getCryptAction() {
         return cryptAction;
     }
@@ -237,6 +269,10 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_SAVE_FILE));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_SAVE_FILE_AS));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_SAVE_UNENCRYPTED));
+        keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_UNDO));
+        keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_REDO));
+        keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_FONT_SIZE_UP));
+        keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_FONT_SIZE_DOWN));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_CRYPT));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_FORGET_PASSWORD));
         keyProps.add((KeyStrokeProperty)getPropertiesManager().getProperty(KEY_PROPERTIES));
@@ -316,6 +352,13 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     }
 
     /**
+     * Returns the number of undo levels to keep in the undo stack for each editor tab.
+     */
+    public int getUndoLimit() {
+        return undoLimitProp.getValue();
+    }
+
+    /**
      * Reports whether "show line numbers in editor" is enabled.
      */
     public boolean isShowLineNumbers() {
@@ -330,10 +373,68 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
     }
 
     /**
+     * Returns the currently configured point size of the editor font.
+     */
+    public int getEditorFontSize() {
+        return editorFontProp.getFont().getSize();
+    }
+
+    /**
+     * Sets the editor font size to the given point size, while keeping the same font family and style.
+     * Triggers an immediate save to persist this change. There are no upper bounds checks,
+     * but the given point size must be greater than zero.
+     *
+     * @param pointSize The new font size in points (e.g. 14). Must be positive.
+     */
+    public void setEditorFontSize(int pointSize) {
+        if (pointSize <= 0) {
+            throw new IllegalArgumentException("Font size must be positive");
+        }
+        editorFontProp.setFont(getEditorFont().deriveFont((float)pointSize));
+        save(); // immediate save to persist this change
+    }
+
+    /**
      * Returns the configured "gutter" font (for showing line numbers).
      */
     public Font getGutterFont() {
         return gutterFontProp.getFont();
+    }
+
+    /**
+     * Reports whether the user wants to use our custom "block" cursor,
+     * or stick with the boring default one.
+     */
+    public boolean isUseBlockCursor() {
+        return useBlockCursorProp.getValue();
+    }
+
+    /**
+     * Reports the rate, in milliseconds, at which the cursor is
+     * configured to blink. A value of zero means "don't blink".
+     * This option applies to both the standard cursor and
+     * also our own custom BlockCursor.
+     */
+    public int getCursorBlinkRate() {
+        return switch (blinkRateProp.getSelectedIndex()) {
+            case 0 -> 0; // don't blink
+            case 1 -> 250; // fast
+            case 3 -> 1000; // slow
+            default -> 500; // normal
+        };
+    }
+
+    /**
+     * Reports whether the user has opted to override the Look and Feel and set
+     * custom colors. Generally, you don't need to worry about this! When you invoke
+     * the various getXColor() methods, they will automatically check this property
+     * and return the appropriate color based on the current Look and Feel or the
+     * user-selected custom color. But, if you need to know whether the
+     * current colors are coming from the Look and Feel or from user overrides,
+     * you can check this property.
+     */
+    public boolean isOverrideLookAndFeel() {
+        return overrideLafProp.getValue();
     }
 
     /**
@@ -450,6 +551,10 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         saveFileAction = new SaveAction();
         saveFileAsAction = new SaveAsAction();
         saveUnencryptedAction = new SaveUnencryptedAction();
+        undoAction = new UndoAction();
+        redoAction = new RedoAction();
+        fontSizeUpAction = new FontSizeUpAction();
+        fontSizeDownAction = new FontSizeDownAction();
         cryptAction = new CryptAction();
         forgetPasswordAction = new ForgetPasswordAction();
         propertiesAction = new PropertiesAction();
@@ -489,6 +594,17 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
                                                   "Show line numbers in editor",
                                                   true);
         props.add(showLineNumbersProp);
+
+        useBlockCursorProp = new BooleanProperty("UI.Editor.useBlockCursor",
+                                                 "Use block cursor in editor",
+                                                 false);
+        props.add(useBlockCursorProp);
+
+        List<String> options = List.of("Don't blink", "Fast", "Normal", "Slow");
+        blinkRateProp = new ComboProperty<>("UI.Editor.cursorBlinkRate",
+                                            "Blink rate:",
+                                            options, 2, false);
+        props.add(blinkRateProp);
 
         overrideLafProp = new BooleanProperty("UI.Editor.overrideLaF",
                                               "Override Look and Feel with custom editor colors",
@@ -572,6 +688,11 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
                                                        true);
         props.add(restoreTabsOnStartupProp);
 
+        undoLimitProp = new IntegerProperty("UI.Editor tabs.undoLimit",
+                                            "Undo levels:",
+                                            100, 0, 1000, 10);
+        props.add(undoLimitProp);
+
         return props;
     }
 
@@ -621,6 +742,22 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
         props.add(new KeyStrokeProperty(KEY_SAVE_UNENCRYPTED, "Save Unencrypted:",
                                         KeyStrokeManager.parseKeyStroke("Ctrl+Shift+1"), // "!" for unsafe save.
                                         saveUnencryptedAction)
+                          .setAllowBlank(true));
+        props.add(new KeyStrokeProperty(KEY_UNDO, "Undo:",
+                                        KeyStrokeManager.parseKeyStroke("Ctrl+Z"),
+                                        undoAction)
+                          .setAllowBlank(true));
+        props.add(new KeyStrokeProperty(KEY_REDO, "Redo:",
+                                        KeyStrokeManager.parseKeyStroke("Ctrl+Y"),
+                                        redoAction)
+                          .setAllowBlank(true));
+        props.add(new KeyStrokeProperty(KEY_FONT_SIZE_UP, "Increase Font Size:",
+                                        KeyStrokeManager.parseKeyStroke("Ctrl+Equals"), // VK_PLUS fails???
+                                        fontSizeUpAction)
+                          .setAllowBlank(true));
+        props.add(new KeyStrokeProperty(KEY_FONT_SIZE_DOWN, "Decrease Font Size:",
+                                        KeyStrokeManager.parseKeyStroke("Ctrl+Minus"),
+                                        fontSizeDownAction)
                           .setAllowBlank(true));
         props.add(new KeyStrokeProperty(KEY_CRYPT, "Encrypt/Decrypt:",
                                         KeyStrokeManager.parseKeyStroke("Ctrl+D"), // D for "decrypt/crypt" :)
