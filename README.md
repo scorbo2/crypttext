@@ -26,6 +26,7 @@ If you are running on Linux, and have Java 17 or higher installed, you can downl
 - [CryptText Installer](https://www.corbett.ca/apps/CryptText-1.1.tar.gz)
 - Size: 17MB
 - Sha256: `d5aa6243dd0c444f319d4b94ed2aac7a2d96b041220bf411f8e8b22eb25e5631`
+- TODO update download info for 1.2 release
 
 This is the best option, as you get an installer script that sets everything up for you:
 
@@ -45,7 +46,7 @@ mvn clean package
 
 # Run the executable jar that Maven created:
 cd target
-java -jar crypttext-1.1.jar
+java -jar crypttext-1.2.jar
 ```
 
 ## User guide
