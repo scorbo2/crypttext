@@ -2,7 +2,6 @@ package ca.corbett.crypttext.ui;
 
 import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.CryptTextResourceLoader;
-import ca.corbett.crypttext.VetoException;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 import ca.corbett.crypttext.text.Text;
 import ca.corbett.crypttext.text.TextManager;
@@ -132,10 +131,6 @@ public class EditorTabPane extends ToggleableTabbedPane {
             clearIfScratch();
             newTextTab(text, textFile.getName()); // defer to overloaded method to handle duplicate checks/tab creation.
         }
-        catch (VetoException ignored) {
-            // An extension vetoed the load!
-            // Just skip it - TextManager has already logged the veto.
-        }
         catch (IOException ioe) {
             getMessageUtil().error("Error opening file: " + ioe.getMessage(), ioe);
         }
@@ -240,7 +235,7 @@ public class EditorTabPane extends ToggleableTabbedPane {
      * Invoked from EditorTab.close() to remove the given tab from this tab pane.
      *
      * @param editorTab the tab to close. must not be null.
-     * @return whether the given tab was actually closed (action can be canceled or vetoed)
+     * @return whether the given tab was actually closed (action can be canceled)
      */
     boolean closeTab(EditorTab editorTab) {
         if (editorTab == null) {
@@ -257,10 +252,6 @@ public class EditorTabPane extends ToggleableTabbedPane {
             if (result == MessageUtil.YES) {
                 try {
                     editorTab.save();
-                }
-                catch (VetoException ignored) {
-                    // An extension vetoed the save! Just skip it - TextManager has already logged the veto.
-                    return false; // abort the close action if we couldn't save
                 }
                 catch (Exception e) {
                     getMessageUtil().error("Error saving file",
@@ -323,10 +314,10 @@ public class EditorTabPane extends ToggleableTabbedPane {
     private TextManager buildTextManager() {
         TextManager textManager = new TextManager();
         final CryptTextExtensionManager extManager = CryptTextExtensionManager.getInstance();
-        textManager.addTextWillLoadListener((m, f) -> extManager.fileWillLoad(f));
-        textManager.addTextWillSaveListener((m, t, n, f) -> extManager.fileWillSave(t.getSourceFile(), n, f));
-        textManager.addTextLoadedListener((m, t) -> extManager.fileLoaded(t.getSourceFile(), t.getText()));
-        textManager.addTextSavedListener((m, s, t) -> extManager.fileSaved(s, t.getSourceFile()));
+        textManager.addLoadHandlerListener((m, f) -> extManager.handleFileLoad(f));
+        textManager.addSaveHandlerListener((m, t, s, f) -> extManager.handleFileSave(t, s, f));
+        textManager.addTextLoadedListener((m, t) -> extManager.fileLoaded(t));
+        textManager.addTextSavedListener((m, f, t) -> extManager.fileSaved(t, f));
         return textManager;
     }
 

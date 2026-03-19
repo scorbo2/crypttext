@@ -1,7 +1,6 @@
 package ca.corbett.crypttext.text;
 
 import ca.corbett.crypttext.Version;
-import ca.corbett.crypttext.VetoException;
 import ca.corbett.extras.io.FileSystemUtil;
 
 import java.io.File;
@@ -25,8 +24,8 @@ public class TextManager {
     private final File scratchDir;
     private final List<Text> textList = new CopyOnWriteArrayList<>();
 
-    private final List<TextWillLoadListener> textWillLoadListeners = new CopyOnWriteArrayList<>();
-    private final List<TextWillSaveListener> textWillSaveListeners = new CopyOnWriteArrayList<>();
+    private final List<HandleLoadListener> handleLoadListeners = new CopyOnWriteArrayList<>();
+    private final List<HandleSaveListener> handleSaveListeners = new CopyOnWriteArrayList<>();
     private final List<TextLoadedListener> textLoadedListeners = new CopyOnWriteArrayList<>();
     private final List<TextSavedListener> textSavedListeners = new CopyOnWriteArrayList<>();
     private final List<TextChangedListener> textChangedListeners = new CopyOnWriteArrayList<>();
@@ -135,10 +134,9 @@ public class TextManager {
 
     /**
      * Loads a Text instance from the given File, or returns one from cache if already loaded.
-     * A textWillLoadEvent is fired before the load, in the case where the given File is not in cache.
-     * A textLoadedEvent is fired after a successful, non-vetoed load.
-     * Extensions can veto this operation! A VetoException will be thrown if that happens.
-     * Calling code must gracefully respond to this.
+     * Extensions will be given the chance to handle the load details for us.
+     * Otherwise, the application's built-in mechanism for loading is used.
+     * A textLoadedEvent is fired after a successful.
      * <p>
      * No check is done here to make sure the given file is a valid text file!
      * Such validation can be done ahead of time with the TextFileDetector class.
@@ -147,9 +145,8 @@ public class TextManager {
      * @param file The file to load from. Must be a valid, readable file (not a directory).
      * @return A Text instance representing the given file.
      * @throws IOException If an error occurs while reading the file.
-     * @throws VetoException If any extension vetoes the load operation.
      */
-    public synchronized Text fromFile(File file) throws IOException, VetoException {
+    public synchronized Text fromFile(File file) throws IOException {
         if (file == null) {
             throw new IllegalArgumentException("file cannot be null");
         }
@@ -162,19 +159,19 @@ public class TextManager {
             return newText;
         }
 
-        // Give listeners a chance to veto:
-        if (!fireTextWillLoadEvent(file)) {
-            log.warning("Veto: load of file " + file.getAbsolutePath() + " was vetoed by an extension.");
-            throw new VetoException("File load was vetoed by an extension.");
+        // Give listeners a chance to handle the load for us:
+        newText = fireHandleLoad(file);
+
+        // If no extension handled it, then we'll do it ourselves:
+        if (newText == null) {
+            newText = new Text(FileSystemUtil.readFileToString(file), file);
         }
 
-        // Load it:
-        String text = FileSystemUtil.readFileToString(file);
-        newText = new Text(text, file);
+        // Add to cache:
         textList.add(newText);
 
         // Notify listeners:
-        log.info("Load: file " + file.getAbsolutePath() + " was loaded successfully.");
+        log.info("Load: file " + newText.getSourceFile().getAbsolutePath() + " was loaded successfully.");
         fireTextLoadedEvent(newText);
 
         return newText;
@@ -182,10 +179,9 @@ public class TextManager {
 
     /**
      * Saves the given Text instance to its associated file, and returns a new Text instance with the updated text.
-     * A textWillSaveEvent is triggered before the save happens - this is vetoable.
+     * Extensions will be given the chance to handle the save details for us.
+     * Otherwise, the application's built-in mechanism for saving is used.
      * A textSavedEvent is fired after a save successfully completes.
-     * Extensions can veto this operation! A VetoException will be thrown if that happens.
-     * Calling code must gracefully respond to this.
      * <p>
      * The new Text instance that is returned replaces the one that was passed in, which is now stale.
      * The stale instance has been removed from cache and should be discarded.
@@ -198,9 +194,8 @@ public class TextManager {
      * @param newValue The new text value to save. If null, this is treated as empty string.
      * @return A new Text instance representing the saved text. This replaces the passed-in (now stale) instance.
      * @throws IOException If an error occurs while writing to the file.
-     * @throws VetoException If any extension vetoes the save operation.
      */
-    public synchronized Text saveText(Text text, String newValue) throws IOException, VetoException {
+    public synchronized Text saveText(Text text, String newValue) throws IOException {
         if (text == null) {
             throw new IllegalArgumentException("The given Text instance cannot be null");
         }
@@ -210,22 +205,26 @@ public class TextManager {
         if (newValue == null) {
             newValue = "";
         }
-        File sourceFile = text.getSourceFile();
 
-        // Give listeners a chance to veto the save:
-        if (!fireTextWillSaveEvent(text, newValue, sourceFile)) {
-            log.warning("Veto: save of file " + sourceFile.getAbsolutePath() + " was vetoed by an extension.");
-            throw new VetoException("File save was vetoed by an extension.");
+        // Give listeners a chance to handle the save for us:
+        File sourceFile = text.getSourceFile();
+        File destinationFile = fireHandleSave(text, newValue, sourceFile);
+
+        // If nobody volunteered, then we'll do it ourselves:
+        if (destinationFile == null) {
+            FileSystemUtil.writeStringToFile(newValue, sourceFile);
+            destinationFile = sourceFile; // our default behavior is to save back to the same file
         }
 
-        // Save it:
-        FileSystemUtil.writeStringToFile(newValue, sourceFile);
-        Text newText = new Text(newValue, sourceFile);
+        // Our new Text instance references the destination file, which may have changed above:
+        Text newText = new Text(newValue, destinationFile);
+
+        // Update our cache:
         textList.remove(text);
         textList.add(newText);
 
         // Notify listeners:
-        log.info("Save: file " + sourceFile.getAbsolutePath() + " was saved successfully.");
+        log.info("Save: file " + destinationFile.getAbsolutePath() + " was saved successfully.");
         fireTextSavedEvent(newText.getSourceFile(), newText);
 
         return newText;
@@ -237,10 +236,6 @@ public class TextManager {
      * then a textSaved event will be generated for that other instance, to let owners know
      * that the value has changed on disk.
      * <p>
-     * Extensions can veto this operation! A VetoException will be thrown if that happens.
-     * Calling code must gracefully respond to this.
-     * </p>
-     * <p>
      * The returned Text instance replaces the one that was passed in, which is now stale.
      * The stale instance has been removed from cache and should be discarded.
      * </p>
@@ -249,9 +244,8 @@ public class TextManager {
      * </p>
      * <p>
      * <b>Note:</b> if the given newFile is already present in our cache from some other
-     * Text instance, and none of our listeners veto the save operation, then a
-     * textChangedEvent will be fired, so that owners of the old, stale Text instance(s)
-     * can either refresh themselves with the new value, or prompt the user for what to
+     * Text instance, then a textChangedEvent will be fired, so that owners of the old, stale
+     * Text instance(s) can either refresh themselves with the new value, or prompt the user for what to
      * do with their stale contents. You can avoid this by listening for textWillSaveEvents
      * and watching for saves to your file.
      * </p>
@@ -260,7 +254,7 @@ public class TextManager {
      *     Callers should check for this and prompt the user for confirmation.
      * </p>
      */
-    public synchronized Text saveTextAs(Text text, String newValue, File newFile) throws IOException, VetoException {
+    public synchronized Text saveTextAs(Text text, String newValue, File newFile) throws IOException {
         if (text == null) {
             throw new IllegalArgumentException("Given Text instance cannot be null");
         }
@@ -284,15 +278,19 @@ public class TextManager {
             }
         }
 
-        // Give listeners a chance to veto the save:
-        if (!fireTextWillSaveEvent(text, newValue, newFile)) {
-            log.warning("Veto: save of file " + newFile.getAbsolutePath() + " was vetoed by an extension.");
-            throw new VetoException("File save was vetoed by an extension.");
+        // Give listeners a chance to handle the save for us:
+        Text saveTextAs = new Text(newValue, newFile);
+        File destinationFile = fireHandleSave(saveTextAs, newValue, newFile);
+
+        // If no one volunteered, then we'll do it ourselves:
+        if (destinationFile == null) {
+            // Save it:
+            FileSystemUtil.writeStringToFile(newValue, newFile);
+            destinationFile = newFile; // our default behavior is to save to the given file
         }
 
-        // Save it:
-        FileSystemUtil.writeStringToFile(newValue, newFile);
-        Text newText = new Text(newValue, newFile);
+        // The resulting Text instance references the actual destination file, which may not match newFile:
+        Text newText = new Text(newValue, destinationFile);
         try {
             // remove from cache AND delete its sourceFile if in scratch directory:
             remove(text);
@@ -300,7 +298,7 @@ public class TextManager {
             // If any other of our cached Text instances reference that file,
             // let them know of this change. They can decide what to do with it.
             for (Text staleText : textList) {
-                if (Files.isSameFile(staleText.getSourceFile().toPath(), newFile.toPath())) {
+                if (Files.isSameFile(staleText.getSourceFile().toPath(), destinationFile.toPath())) {
                     fireTextChangedEvent(staleText, newText);
                 }
             }
@@ -310,8 +308,8 @@ public class TextManager {
             textList.add(newText);
 
             // Notify listeners:
-            log.info("Save: file " + newFile.getAbsolutePath() + " was saved successfully.");
-            fireTextSavedEvent(text.getSourceFile(), newText);
+            log.info("Save: file " + destinationFile.getAbsolutePath() + " was saved successfully.");
+            fireTextSavedEvent(destinationFile, newText);
         }
 
         return newText;
@@ -329,35 +327,35 @@ public class TextManager {
         return Files.isSameFile(scratchDir.toPath(), candidate.getParentFile().toPath());
     }
 
-    public TextManager addTextWillLoadListener(TextWillLoadListener listener) {
+    public TextManager addLoadHandlerListener(HandleLoadListener listener) {
         if (listener == null) {
-            throw new IllegalArgumentException("TextWillLoadListener cannot be null.");
+            throw new IllegalArgumentException("HandleLoadListener cannot be null.");
         }
-        textWillLoadListeners.add(listener);
+        handleLoadListeners.add(listener);
         return this;
     }
 
-    public TextManager removeTextWillLoadListener(TextWillLoadListener listener) {
+    public TextManager removeLoadHandlerListener(HandleLoadListener listener) {
         if (listener == null) {
             throw new IllegalArgumentException("listener cannot be null");
         }
-        textWillLoadListeners.remove(listener);
+        handleLoadListeners.remove(listener);
         return this;
     }
 
-    public TextManager addTextWillSaveListener(TextWillSaveListener listener) {
+    public TextManager addSaveHandlerListener(HandleSaveListener listener) {
         if (listener == null) {
-            throw new IllegalArgumentException("TextWillSaveListener cannot be null.");
+            throw new IllegalArgumentException("HandleSaveListener cannot be null.");
         }
-        textWillSaveListeners.add(listener);
+        handleSaveListeners.add(listener);
         return this;
     }
 
-    public TextManager removeTextWillSaveListener(TextWillSaveListener listener) {
+    public TextManager removeSaveHandlerListener(HandleSaveListener listener) {
         if (listener == null) {
             throw new IllegalArgumentException("listener cannot be null");
         }
-        textWillSaveListeners.remove(listener);
+        handleSaveListeners.remove(listener);
         return this;
     }
 
@@ -401,22 +399,24 @@ public class TextManager {
         return this;
     }
 
-    private boolean fireTextWillLoadEvent(File file) {
-        for (TextWillLoadListener listener : textWillLoadListeners) {
-            if (!listener.textWillLoad(this, file)) {
-                return false; // The first one that vetoes, we're done
+    private Text fireHandleLoad(File file) throws IOException {
+        for (HandleLoadListener listener : handleLoadListeners) {
+            Text text = listener.handleFileLoad(this, file);
+            if (text != null) {
+                return text;
             }
         }
-        return true;
+        return null;
     }
 
-    private boolean fireTextWillSaveEvent(Text text, String newContents, File destFile) {
-        for (TextWillSaveListener listener : textWillSaveListeners) {
-            if (!listener.textWillSave(this, text, newContents, destFile)) {
-                return false; // The first one that vetoes, we're done
+    private File fireHandleSave(Text text, String newContents, File destFile) throws IOException {
+        for (HandleSaveListener listener : handleSaveListeners) {
+            File file = listener.handleFileSave(this, text, newContents, destFile);
+            if (file != null) {
+                return file;
             }
         }
-        return true;
+        return null;
     }
 
     private void fireTextLoadedEvent(Text text) {

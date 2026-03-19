@@ -2,6 +2,7 @@ package ca.corbett.crypttext.extensions;
 
 import ca.corbett.crypttext.crypt.CryptMetadata;
 import ca.corbett.crypttext.crypt.EncryptedText;
+import ca.corbett.crypttext.text.Text;
 import ca.corbett.crypttext.ui.TabStateManager;
 import ca.corbett.extensions.AppExtension;
 
@@ -9,6 +10,7 @@ import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -51,63 +53,82 @@ public abstract class CryptTextExtension extends AppExtension {
     }
 
     /**
-     * Invoked before a file is loaded. Extensions can veto the load by returning false.
-     * Generally, when vetoing a load, an extension should also display a message to the
-     * user explaining why the load was vetoed.
+     * Gives extensions an opportunity to handle file loading themselves, overriding the application's built-in
+     * mechanism for loading. The first extension that returns a non-null Text instance from this method
+     * will result in the load operation being considered complete. Subsequent extensions in the load order
+     * sequence will not be sent a handleFileSave message for this load operation.
+     * All extensions, including the one that just handled the load, will then receive a fileLoaded
+     * message for this load operation.
      * <p>
-     * If any extension vetoes a load, subsequent extensions in the load order sequence
-     * are not sent this message.
+     * Note that the sourceFile in the resulting Text instance doesn't necessarily have to match the
+     * supplied toLoad file. Extensions are free to move and/or rename the file as part of their load
+     * handling. The application will respond accordingly (that is, hitting "save" after the load will
+     * respect the sourceFile in the Text instance, not the original toLoad file).
      * </p>
      *
-     * @param toLoad The file that is about to be loaded.
-     * @return true to allow the load to proceed, or false to veto the load.
+     * @param toLoad the file that is about to be loaded.
+     * @return non-null to indicate that the load has been handled, or null to pass on the operation.
+     * @throws IOException can be thrown if the load fails. Application will handle the exception.
      */
-    public boolean fileWillLoad(File toLoad) {
-        return true;
+    public Text handleFileLoad(File toLoad) throws IOException {
+        return null;
     }
 
     /**
-     * Invoked before a file is saved. Extensions can veto the save by returning false.
-     * Generally, when vetoing a save, an extension should also display a message to the
-     * user explaining why the save was vetoed.
+     * Gives extensions an opportunity to handle file saving themselves, overriding the application's built-in
+     * mechanism for saving. The first extension that returns a non-null File instance from this method
+     * will result in the save operation being considered complete. Subsequent extensions in the load order
+     * sequence will not be sent a handleFileSave message for this save operation.
+     * All extensions, including the one that just handled the save, will then receive a
+     * fileSaved message for this save operation.
      * <p>
-     *     If any extension vetoes a save, subsequent extensions in the load order sequence
-     *     are not sent this message.
+     * Note that the returned File does not need to match the sourceFile of the supplied Text instance!
+     * Extensions are free to move and/or rename the file as part of their save handling. The application will
+     * respond accordingly (that is, the MainWindow will now consider the returned File to be
+     * the sourceFile for the Text instance, and hitting "save" again will save to that file,
+     * not the original toSave file).
+     * </p>
+     * <p>
+     * For unencrypted files, the Text's memoryContents will exactly match the resolvedText parameter.
+     * For encrypted files that have been decrypted in-memory, the Text's memoryContents will be the
+     * decrypted text, while the resolvedText parameter will be the encrypted version of that text.
+     * Extensions are encouraged to save the resolvedText, and ignore the Text's memoryContents,
+     * to preserve the encryption that has been done, but this is not enforced.
      * </p>
      *
-     * @param toSave The file that is about to be saved.
-     * @param newContents The new (pre-encryption) contents that are about to be written to the file.
-     * @param destFile The destination file (for saves, same as toSave, for "save as", the new file).
-     * @return true to allow the save to proceed, or false to veto the save.
+     * @param toSave the Text instance containing the in-memory text.
+     * @param resolvedText the actual text content that is about to be saved. May be encrypted.
+     * @param destinationFile may not match toSave's sourceFile if this is a "save as" operation.
+     * @return a File to indicate that the save has been handled, or null to pass on the operation.
+     * @throws IOException can be thrown if the save fails. Application will handle the exception.
      */
-    public boolean fileWillSave(File toSave, String newContents, File destFile) {
-        return true;
+    public File handleFileSave(Text toSave, String resolvedText, File destinationFile) throws IOException {
+        return null;
     }
 
     /**
      * Invoked after a file is loaded. Extensions can override this method to be notified when a file is loaded.
-     * If you wish to veto a load, override fileWillLoad instead and return false.
+     * Note that if the file is encrypted, the text supplied here may be unreadable. Use the
+     * textDecrypted event instead if you want to be notified when something is decrypted.
      *
-     * @param loaded The file that was just loaded.
-     * @param loadedContents The decrypted contents of the file that was just loaded.
+     * @param loadedContent the Text instance that was just loaded. May be encrypted.
      */
-    public void fileLoaded(File loaded, String loadedContents) {
+    public void fileLoaded(Text loadedContent) {
         // No-op by default. Extensions can override this method to be notified when a file is loaded.
     }
 
     /**
      * Invoked after a file is saved. Extensions can override this method to be notified when a file is saved.
-     * If you wish to veto a save, override fileWillSave instead and return false.
      * <p>
-     *     For "save" operations, the two file parameters will be the same.
-     *     For "save as" operations, the first parameter is the file from which the content in question
-     *     was originally loaded, and the second parameter is the destination file.
+     *     For "save" operations, the destFile parameter should usually match the sourceFile of the Text instance.
+     *     For "save as" operations, the Text instance may reference the file from which the content in question
+     *     was originally loaded, and the second parameter is the new destination file.
      * </p>
      *
-     * @param source The file from which the content in question was loaded.
-     * @param dest The file to which the content in question was saved.
+     * @param text The Text instance which was just saved.
+     * @param destFile The file to which the content in question was saved.
      */
-    public void fileSaved(File source, File dest) {
+    public void fileSaved(Text text, File destFile) {
         // No-op by default. Extensions can override this method to be notified when a file is saved.
     }
 
@@ -166,6 +187,30 @@ public abstract class CryptTextExtension extends AppExtension {
      */
     public String textWillDecrypt(EncryptedText encryptedText) {
         return null;
+    }
+
+    /**
+     * A notification message that the given EncryptedText instance was just decrypted.
+     * This notification is sent regardless of whether the decryption was handled by the application
+     * or by an extension.
+     *
+     * @param cryptText     the EncryptedText instance that was decrypted.
+     * @param decryptedText the resulting decrypted text.
+     */
+    public void textWasDecrypted(EncryptedText cryptText, String decryptedText) {
+        // No-op by default. Extensions can override this method to be notified when text is decrypted.
+    }
+
+    /**
+     * A notification message that the given Text instance was just encrypted.
+     * This notification is sent regardless of whether the encryption was handled by the application
+     * or by an extension.
+     *
+     * @param plaintext the plaintext that was encrypted.
+     * @param cryptText the resulting EncryptedText instance that was created from the encryption.
+     */
+    public void textWasEncrypted(String plaintext, EncryptedText cryptText) {
+        // No-op by default. Extensions can override this method to be notified when text is encrypted.
     }
 
     /**

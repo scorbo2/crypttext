@@ -40,7 +40,6 @@ crypttext/
 │   │   ├── RecentFilesManager.java
 │   │   ├── CryptTextResourceLoader.java
 │   │   ├── DecryptionFailedException.java
-│   │   ├── VetoException.java
 │   │   ├── crypt/               # Encryption/decryption logic
 │   │   │   ├── CryptUtil.java
 │   │   │   ├── CryptMetadata.java
@@ -192,7 +191,6 @@ Plugin architecture:
   - Integrates with CryptTextExtensionManager
 - **RecentFilesManager**: Recently-opened files list
 - **DecryptionFailedException**: Custom exception for decryption failures
-- **VetoException**: Extension veto signaling mechanism
 
 ## 6. Main Classes and Responsibilities
 
@@ -281,12 +279,12 @@ Extensions are loaded from `~/.CryptText/extensions/` directory. CryptTextExtens
 
 ### Extension Hooks
 
-| Hook                                        | Purpose                    | Return Value            |
-|---------------------------------------------|----------------------------|-------------------------|
-| `getTopLevelMenus()`                        | Add top-level menus        | List<JMenu> or null     |
-| `getMenuItems(topLevelMenu)`                | Add items to existing menu | List<JMenuItem> or null |
-| `fileWillLoad(File)`                        | Veto file loads            | boolean (true=allow)    |
-| `fileWillSave(File, newContents, destFile)` | Veto file saves            | boolean (true=allow)    |
+| Hook                                 | Purpose                                | Return Value            |
+|--------------------------------------|----------------------------------------|-------------------------|
+| `getTopLevelMenus()`                 | Add top-level menus                    | List<JMenu> or null     |
+| `getMenuItems(topLevelMenu)`         | Add items to existing menu             | List<JMenuItem> or null |
+| `handleFileLoad(File)`               | Allows extensions to handle file loads | non-null = handled      |
+| `handleFileSave(Text, String, File)` | Allows extensions to handle file saves | non-null = handled      |
 
 ### Built-in Extensions
 
@@ -381,7 +379,6 @@ Extension defaults include `F4` for toggling DirTree, plus `F11` / `Esc` for ent
 
 ### Exception Handling
 - **DecryptionFailedException**: Password/data validation failures
-- **VetoException**: Extension veto signaling
 - **Logging**: java.util.logging.Logger
 
 ### Thread Safety
@@ -500,13 +497,11 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
 ### Extension Development
 - Loaded from jar files in extensions directory
 - Load order matters (alphabetically by default)
-- Can veto file operations via `CryptTextExtension.fileWillLoad/fileWillSave`
 - Have access to MainWindow static methods
 - Built-in extensions also define their own config properties and keystrokes via `createConfigProperties()`
 
 ### Listener Pattern
 - Thread-safe (CopyOnWriteArrayList)
-- `CryptTextExtension.fileWillLoad/fileWillSave` provide extension veto hooks (internally backed by `TextWillLoad/TextWillSave` in `TextManager` via `EditorTabPane.buildTextManager()`)
 - UI listeners on EDT, data listeners may be cross-thread
 - Undo/redo uses `GroupingUndoableEditListener` so bursts of typing undo as a group instead of one character at a time
 

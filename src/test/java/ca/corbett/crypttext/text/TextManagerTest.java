@@ -1,6 +1,5 @@
 package ca.corbett.crypttext.text;
 
-import ca.corbett.crypttext.VetoException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,7 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Comprehensive unit tests for the TextManager class.
@@ -231,23 +229,6 @@ class TextManagerTest {
         assertEquals(1, textManager.size());
     }
 
-    @Test
-    void testFromFileThrowsVetoExceptionWhenVetoed() throws Exception {
-        File file = tempDir.resolve("test.txt").toFile();
-        Files.writeString(file.toPath(), "content");
-
-        textManager.addTextWillLoadListener((manager, f) -> false);
-
-        try {
-            textManager.fromFile(file);
-            fail("Expected VetoException to be thrown");
-        }
-        catch (VetoException ignored) {
-            // expected exception
-        }
-        assertEquals(0, textManager.size());
-    }
-
     // ==================== SaveText Tests ====================
 
     @Test
@@ -400,24 +381,24 @@ class TextManagerTest {
 
     @Test
     void testAddTextWillLoadListenerWithNullThrowsException() {
-        assertThrows(IllegalArgumentException.class, () -> textManager.addTextWillLoadListener(null));
+        assertThrows(IllegalArgumentException.class, () -> textManager.addLoadHandlerListener(null));
     }
 
     @Test
     void testRemoveTextWillLoadListenerWithNullThrowsException() {
-        assertThrows(IllegalArgumentException.class, () -> textManager.removeTextWillLoadListener(null));
+        assertThrows(IllegalArgumentException.class, () -> textManager.removeLoadHandlerListener(null));
     }
 
     @Test
-    void testTextWillLoadListenerReceivesEvent() throws Exception {
+    void testHandleLoadListenerReceivesEvent() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "content");
 
         boolean[] called = {false};
-        textManager.addTextWillLoadListener((manager, f) -> {
+        textManager.addLoadHandlerListener((manager, f) -> {
             called[0] = true;
             assertEquals(file, f);
-            return true;
+            return null;
         });
 
         textManager.fromFile(file);
@@ -425,61 +406,22 @@ class TextManagerTest {
     }
 
     @Test
-    void testTextWillLoadListenerCanVetoLoad() throws Exception {
-        File file = tempDir.resolve("test.txt").toFile();
-        Files.writeString(file.toPath(), "content");
-
-        textManager.addTextWillLoadListener((manager, f) -> false);
-
-        try {
-            Text text = textManager.fromFile(file);
-            fail("Expected VetoException to be thrown");
-        }
-        catch (VetoException ignored) {
-            // expected exception
-        }
-    }
-
-    @Test
-    void testMultipleTextWillLoadListenersAllCalled() throws Exception {
+    void testMultipleHandleLoadListenersAllCalled() throws Exception {
         File file = tempDir.resolve("test.txt").toFile();
         Files.writeString(file.toPath(), "content");
 
         int[] callCount = {0};
-        textManager.addTextWillLoadListener((manager, f) -> {
+        textManager.addLoadHandlerListener((manager, f) -> {
             callCount[0]++;
-            return true;
+            return null;
         });
-        textManager.addTextWillLoadListener((manager, f) -> {
+        textManager.addLoadHandlerListener((manager, f) -> {
             callCount[0]++;
-            return true;
+            return null;
         });
 
         textManager.fromFile(file);
         assertEquals(2, callCount[0]);
-    }
-
-    @Test
-    void testTextWillLoadListenerStopsOnFirstVeto() throws Exception {
-        File file = tempDir.resolve("test.txt").toFile();
-        Files.writeString(file.toPath(), "content");
-
-        boolean[] secondCalled = {false};
-        textManager.addTextWillLoadListener((manager, f) -> false);
-        textManager.addTextWillLoadListener((manager, f) -> {
-            secondCalled[0] = true;
-            return true;
-        });
-
-        try {
-            textManager.fromFile(file);
-            fail("Expected VetoException to be thrown");
-        }
-        catch (VetoException ignored) {
-            // expected exception
-        }
-
-        assertFalse(secondCalled[0]);
     }
 
     @Test
@@ -488,13 +430,13 @@ class TextManagerTest {
         Files.writeString(file.toPath(), "content");
 
         boolean[] called = {false};
-        TextWillLoadListener listener = (manager, f) -> {
+        HandleLoadListener listener = (manager, f) -> {
             called[0] = true;
-            return true;
+            return null;
         };
 
-        textManager.addTextWillLoadListener(listener);
-        textManager.removeTextWillLoadListener(listener);
+        textManager.addLoadHandlerListener(listener);
+        textManager.removeLoadHandlerListener(listener);
         textManager.fromFile(file);
 
         assertFalse(called[0]);
@@ -503,24 +445,24 @@ class TextManagerTest {
     // ==================== Listener Tests - TextWillSaveListener ====================
 
     @Test
-    void testAddTextWillSaveListenerWithNullThrowsException() {
-        assertThrows(IllegalArgumentException.class, () -> textManager.addTextWillSaveListener(null));
+    void testAddHandleSaveListenerWithNullThrowsException() {
+        assertThrows(IllegalArgumentException.class, () -> textManager.addSaveHandlerListener(null));
     }
 
     @Test
-    void testRemoveTextWillSaveListenerWithNullThrowsException() {
-        assertThrows(IllegalArgumentException.class, () -> textManager.removeTextWillSaveListener(null));
+    void testRemoveHandleSaveListenerWithNullThrowsException() {
+        assertThrows(IllegalArgumentException.class, () -> textManager.removeSaveHandlerListener(null));
     }
 
     @Test
-    void testTextWillSaveListenerReceivesEvent() throws Exception {
+    void testHandleSaveListenerReceivesEvent() throws Exception {
         Text text = textManager.newText();
 
         boolean[] called = {false};
-        textManager.addTextWillSaveListener((manager, t, n, file) -> {
+        textManager.addSaveHandlerListener((manager, t, n, file) -> {
             called[0] = true;
             assertEquals(text, t);
-            return true;
+            return null;
         });
 
         textManager.saveText(text, "content");
@@ -528,29 +470,15 @@ class TextManagerTest {
     }
 
     @Test
-    void testTextWillSaveListenerCanVetoSave() throws Exception {
-        Text text = textManager.newText();
-        textManager.addTextWillSaveListener((manager, t, n, file) -> false);
-
-        try {
-            textManager.saveText(text, "new content");
-            fail("Expected VetoException to be thrown");
-        }
-        catch (VetoException ignored) {
-            // expected exception
-        }
-    }
-
-    @Test
-    void testTextWillSaveListenerReceivesCorrectDestFile() throws Exception {
+    void testHandleSaveListenerReceivesCorrectDestFile() throws Exception {
         Text text = textManager.newText();
         File newFile = tempDir.resolve("new.txt").toFile();
         assertTrue(newFile.createNewFile());
 
         File[] receivedFile = {null};
-        textManager.addTextWillSaveListener((manager, t, n, file) -> {
+        textManager.addSaveHandlerListener((manager, t, n, file) -> {
             receivedFile[0] = file;
-            return true;
+            return null;
         });
 
         textManager.saveTextAs(text, "content", newFile);
@@ -558,36 +486,17 @@ class TextManagerTest {
     }
 
     @Test
-    void testTextWillSaveWithVetoPreventsTextSavedListener() throws Exception {
-        Text text = textManager.newText();
-
-        boolean[] savedCalled = {false};
-        textManager.addTextWillSaveListener((manager, t, n, file) -> false);
-        textManager.addTextSavedListener((manager, s, t) -> savedCalled[0] = true);
-
-        try {
-            textManager.saveTextAs(text, "content", tempDir.resolve("new.txt").toFile());
-            fail("Expected VetoException to be thrown");
-        }
-        catch (VetoException ignored) {
-            // expected exception
-        }
-
-        assertFalse(savedCalled[0]);
-    }
-
-    @Test
-    void testRemoveTextWillSaveListenerWorks() throws Exception {
+    void testRemoveHandleSaveListenerWorks() throws Exception {
         Text text = textManager.newText();
 
         boolean[] called = {false};
-        TextWillSaveListener listener = (manager, t, newContents, file) -> {
+        HandleSaveListener listener = (manager, t, newContents, file) -> {
             called[0] = true;
-            return true;
+            return null;
         };
 
-        textManager.addTextWillSaveListener(listener);
-        textManager.removeTextWillSaveListener(listener);
+        textManager.addSaveHandlerListener(listener);
+        textManager.removeSaveHandlerListener(listener);
         textManager.saveText(text, "content");
 
         assertFalse(called[0]);
@@ -618,26 +527,6 @@ class TextManagerTest {
 
         textManager.fromFile(file);
         assertTrue(called[0]);
-    }
-
-    @Test
-    void testTextLoadedListenerNotCalledWhenLoadVetoed() throws Exception {
-        File file = tempDir.resolve("test.txt").toFile();
-        Files.writeString(file.toPath(), "content");
-
-        boolean[] loadedCalled = {false};
-        textManager.addTextWillLoadListener((manager, f) -> false);
-        textManager.addTextLoadedListener((manager, t) -> loadedCalled[0] = true);
-
-        try {
-            textManager.fromFile(file);
-            fail("Expected VetoException to be thrown");
-        }
-        catch (VetoException ignored) {
-            // expected exception
-        }
-
-        assertFalse(loadedCalled[0]);
     }
 
     @Test
@@ -698,25 +587,6 @@ class TextManagerTest {
     }
 
     @Test
-    void testTextSavedListenerNotCalledWhenSaveVetoed() throws Exception {
-        Text text = textManager.newText();
-
-        boolean[] savedCalled = {false};
-        textManager.addTextWillSaveListener((manager, t, n, file) -> false);
-        textManager.addTextSavedListener((manager, s, t) -> savedCalled[0] = true);
-
-        try {
-            textManager.saveText(text, "content");
-            fail("Expected VetoException to be thrown");
-        }
-        catch (VetoException ignored) {
-            // expected exception
-        }
-
-        assertFalse(savedCalled[0]);
-    }
-
-    @Test
     void testTextSavedListenerReceivesEventForSaveAs() throws Exception {
         Text text = textManager.newText();
         File newFile = tempDir.resolve("new.txt").toFile();
@@ -762,16 +632,16 @@ class TextManagerTest {
 
     @Test
     void testListenerMethodsReturnManagerForChaining() {
-        TextWillLoadListener willLoadListener = (manager, file) -> true;
-        TextWillSaveListener willSaveListener = (manager, text, newContents, file) -> true;
+        HandleLoadListener handleLoadListener = (manager, file) -> null;
+        HandleSaveListener handleSaveListener = (manager, text, newContents, file) -> null;
         TextLoadedListener loadedListener = (manager, text) -> {
         };
         TextSavedListener savedListener = (manager, s, text) -> {
         };
 
         TextManager result = textManager
-                .addTextWillLoadListener(willLoadListener)
-                .addTextWillSaveListener(willSaveListener)
+                .addLoadHandlerListener(handleLoadListener)
+                .addSaveHandlerListener(handleSaveListener)
                 .addTextLoadedListener(loadedListener)
                 .addTextSavedListener(savedListener);
 
@@ -851,16 +721,16 @@ class TextManagerTest {
 
         StringBuilder eventLog = new StringBuilder();
 
-        textManager.addTextWillLoadListener((manager, f) -> {
+        textManager.addLoadHandlerListener((manager, f) -> {
             eventLog.append("willLoad,");
-            return true;
+            return null;
         });
 
         textManager.addTextLoadedListener((manager, t) -> eventLog.append("loaded,"));
 
-        textManager.addTextWillSaveListener((manager, t, n, destFile) -> {
+        textManager.addSaveHandlerListener((manager, t, n, destFile) -> {
             eventLog.append("willSave,");
-            return true;
+            return null;
         });
 
         textManager.addTextSavedListener((manager, s, t) -> eventLog.append("saved,"));

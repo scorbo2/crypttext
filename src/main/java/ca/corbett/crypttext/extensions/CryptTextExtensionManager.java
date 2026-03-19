@@ -7,6 +7,7 @@ import ca.corbett.crypttext.extensions.builtin.DirTreeExtension;
 import ca.corbett.crypttext.extensions.builtin.ImmersiveModeExtension;
 import ca.corbett.crypttext.extensions.builtin.StatusBarExtension;
 import ca.corbett.crypttext.extensions.builtin.TestExtension;
+import ca.corbett.crypttext.text.Text;
 import ca.corbett.crypttext.ui.TabStateManager;
 import ca.corbett.extensions.ExtensionManager;
 import ca.corbett.extras.properties.KeyStrokeProperty;
@@ -16,6 +17,7 @@ import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -27,7 +29,7 @@ import java.util.logging.Level;
  * <p>
  *     <b>Extension load order matters!</b> - several of the extension hooks will stop as
  *     soon as one extension supplies a meaningful value. For example, if one extension
- *     vetoes a file load, subsequent extensions will not be sent the fileWillLoad message.
+ *     handles a file load, subsequent extensions will not be sent the handleFileLoad message.
  *     Extension load order can be controlled via the ext-load-order.txt file as described
  *     in our parent class Javadocs. By default, if no ext-load-order.txt file is supplied,
  *     extensions are loaded alphabetically by their jar file names.
@@ -145,71 +147,71 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
     }
 
     /**
-     * Allows any loaded extension to veto a file load.
-     * <p>
-     * If any extension vetoes a load, subsequent extensions in the load order sequence
-     * are not sent this message.
-     * </p>
+     * Allows any loaded extension to handle loading a file. Any extension can return a non-null Text
+     * instance here to indicate that the load has been handled.
      *
      * @param toLoad The file that is about to be loaded.
-     * @return true to allow the load to proceed, or false to veto the load.
+     * @return non-null to indicate that the load is handled, null to pass on the operation.
+     * @throws IOException can be thrown if the load fails. Application will handle the exception.
      */
-    public boolean fileWillLoad(File toLoad) {
+    public Text handleFileLoad(File toLoad) throws IOException {
         for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
-            if (!extension.fileWillLoad(toLoad)) {
-                return false; // if any extension vetoes, we're done.
+            Text loaded = extension.handleFileLoad(toLoad);
+            if (loaded != null) {
+                return loaded; // if any extension returns a non-null value, we're done.
             }
         }
-        return true;
+        return null; // no one volunteered; allow the application to handle it.
     }
 
     /**
-     * Allows any loaded extension to veto a file save.
-     * <p>
-     *     If any extension vetoes a save, subsequent extensions in the load order sequence
-     *     are not sent this message.
-     * </p>
+     * Allows any loaded extension to handle saving a Text instance. Any extension can return a non-null
+     * File instance here to indicate that the save has been handled.
      *
-     * @param toSave The file that is about to be saved.
-     * @param newContents The new (pre-encryption) contents that are about to be written to the file.
-     * @param destFile For save operations, this will be the same as toSave. For save as operations, this is the new file.
-     * @return true to allow the save to proceed, or false to veto the save.
+     * @param toSave The Text that is about to be saved.
+     * @param resolvedText The resolved text that is about to be saved. May be encrypted.
+     * @param destinationFile May not match toSave's sourceFile for a "save as" operation.
+     * @return non-null to indicate that the save is handled, null to pass on the operation.
+     * @throws IOException can be thrown if the save fails. Application will handle the exception.
      */
-    public boolean fileWillSave(File toSave, String newContents, File destFile) {
+    public File handleFileSave(Text toSave, String resolvedText, File destinationFile) throws IOException {
         for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
-            if (!extension.fileWillSave(toSave, newContents, destFile)) {
-                return false; // if any extension vetoes, we're done.
+            File saved = extension.handleFileSave(toSave, resolvedText, destinationFile);
+            if (saved != null) {
+                return saved; // if any extension returns a non-null value, we're done.
             }
         }
-        return true;
+        return null; // no one volunteered; allow the application to handle it.
     }
 
     /**
-     * A simple notification sent to all loaded extensions that a file has been loaded.
+     * A simple notification sent to all loaded extensions that a Text instance has been loaded.
      *
-     * @param loaded The file that was just loaded.
-     * @param loadedContents The decrypted contents of the file that was just loaded.
+     * @param loadedContent the Text that was just loaded.
      */
-    public void fileLoaded(File loaded, String loadedContents) {
+    public void fileLoaded(Text loadedContent) {
         for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
-            extension.fileLoaded(loaded, loadedContents);
+            extension.fileLoaded(loadedContent);
         }
     }
 
     /**
-     * A simple notification sent to all loaded extensions that a file has been saved.
+     * A simple notification sent to all loaded extensions that a Text instance has been saved.
+     * Will be sent for both "save" and "save as" operations. The sourceFile property of the given
+     * Text instance may or may not match the destFile parameter. The destFile parameter
+     * always refers to the File to which the content was actually saved.
      * <p>
      *     For "save" operations, the two file parameters will be the same.
      *     For "save as" operations, the first parameter is the file from which the content in question
      *     was originally loaded, and the second parameter is the destination file.
      * </p>
      *
-     * @param source The file from which the content in question was loaded.
-     * @param dest The file to which the content in question was saved.
+     * @param text The Text instance that was just saved.
+     * @param destFile The file to which the content in question was saved.
      */
-    public void fileSaved(File source, File dest) {
+    public void fileSaved(Text text, File destFile) {
         for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
-            extension.fileSaved(source, dest);
+            extension.fileSaved(text, destFile);
         }
     }
 
@@ -275,6 +277,35 @@ public class CryptTextExtensionManager extends ExtensionManager<CryptTextExtensi
         }
         return null; // No extension supplied a decrypted version, so allow the application to handle it.
     }
+
+    /**
+     * Notifies all loaded extensions that a Text instance has just been decrypted. This is purely a notification;
+     * any extension that wants to override the decryption process should do so in the
+     * textWillEncrypt and textWillDecrypt hooks, not here.
+     *
+     * @param cryptText The EncryptedText instance that was just decrypted.
+     * @param plaintext The resulting decrypted text.
+     */
+    public void textWasDecrypted(EncryptedText cryptText, String plaintext) {
+        for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
+            extension.textWasDecrypted(cryptText, plaintext);
+        }
+    }
+
+    /**
+     * Notifies all loaded extensions that a Text instance has just been encrypted. This is purely a notification;
+     * any extension that wants to override the encryption process should do so in the
+     * textWillEncrypt and textWillDecrypt hooks, not here.
+     *
+     * @param plaintext The plaintext that was just encrypted.
+     * @param cryptText The resulting EncryptedText instance that was just created.
+     */
+    public void textWasEncrypted(String plaintext, EncryptedText cryptText) {
+        for (CryptTextExtension extension : getEnabledLoadedExtensions()) {
+            extension.textWasEncrypted(plaintext, cryptText);
+        }
+    }
+
 
     /**
      * Queries all loaded extensions to see if they have any extra components (typically panels) that they want

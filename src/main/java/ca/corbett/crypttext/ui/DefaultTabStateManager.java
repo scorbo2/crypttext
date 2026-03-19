@@ -2,7 +2,6 @@ package ca.corbett.crypttext.ui;
 
 import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.Version;
-import ca.corbett.crypttext.VetoException;
 import ca.corbett.crypttext.text.Text;
 import ca.corbett.extras.io.FileSystemUtil;
 
@@ -112,10 +111,6 @@ public class DefaultTabStateManager implements TabStateManager {
                     }
 
                     editorTabPane.newTextTab(restoredText, toRestore.getName());
-                }
-                catch (VetoException ignored) {
-                    // An extension vetoed the load!
-                    // Just skip it - TextManager has already logged the veto.
                 }
                 catch (IOException ioe) {
                     // If one of the files fails to load, we should still continue to try the others:

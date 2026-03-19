@@ -6,6 +6,7 @@ import ca.corbett.crypttext.crypt.CryptMetadata;
 import ca.corbett.crypttext.crypt.EncryptedText;
 import ca.corbett.crypttext.extensions.CryptTextExtension;
 import ca.corbett.crypttext.extensions.ExtraComponentPosition;
+import ca.corbett.crypttext.text.Text;
 import ca.corbett.crypttext.ui.EditorTabPane;
 import ca.corbett.crypttext.ui.MainWindow;
 import ca.corbett.crypttext.ui.TabStateManager;
@@ -24,6 +25,7 @@ import javax.swing.JPanel;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -46,9 +48,6 @@ import java.util.logging.Logger;
 public class TestExtension extends CryptTextExtension {
 
     private static final Logger log = Logger.getLogger(TestExtension.class.getName());
-
-    private static final String AUTO_VETO_LOAD_PROP = "TestExtension.Options.autoVetoLoad";
-    private static final String AUTO_VETO_SAVE_PROP = "TestExtension.Options.autoVetoSave";
 
     private final AppExtensionInfo extInfo;
     private final EnhancedAction logDumpAction = new LogDumpAction();
@@ -78,9 +77,6 @@ public class TestExtension extends CryptTextExtension {
                                         logDumpAction)
                           .setHelpText("Generates a diagnostic log dump"));
 
-        props.add(new BooleanProperty(AUTO_VETO_LOAD_PROP, "Veto all load operations", false));
-        props.add(new BooleanProperty(AUTO_VETO_SAVE_PROP, "Veto all save operations", false));
-
         return props;
     }
 
@@ -102,35 +98,27 @@ public class TestExtension extends CryptTextExtension {
     }
 
     @Override
-    public boolean fileWillLoad(File toLoad) {
-        boolean shouldVeto = getBooleanProp(AUTO_VETO_LOAD_PROP);
-        if (shouldVeto) {
-            log.info("fileWillLoad: vetoing load of " + toLoad.getAbsolutePath());
-            return false;
-        }
-        log.info("fileWillLoad: " + toLoad.getAbsolutePath());
-        return true;
+    public Text handleFileLoad(File toLoad) throws IOException {
+        log.info("handleFileLoad: " + toLoad.getAbsolutePath());
+        return null; // Returning null means "I don't want to handle this load"
     }
 
     @Override
-    public boolean fileWillSave(File toSave, String newContents, File destFile) {
-        boolean shouldVeto = getBooleanProp(AUTO_VETO_SAVE_PROP);
-        if (shouldVeto) {
-            log.info("fileWillSave: vetoing save of " + toSave.getAbsolutePath() + " -> " + destFile.getAbsolutePath());
-            return false;
-        }
-        log.info("fileWillSave: " + toSave.getAbsolutePath() + " -> " + destFile.getAbsolutePath());
-        return true;
+    public File handleFileSave(Text toSave, String resolvedText, File destinationFile) throws IOException {
+        log.info("handleFileSave: " + toSave.getSourceFile() + " -> " + destinationFile);
+        return null; // Returning null means "I don't want to handle this save"
     }
 
     @Override
-    public void fileLoaded(File loaded, String loadedContents) {
-        log.info("fileLoaded: " + loaded.getAbsolutePath() + ", contents length: " + loadedContents.length());
+    public void fileLoaded(Text loadedContent) {
+        log.info("fileLoaded: " + loadedContent.getSourceFile().getAbsolutePath()
+                         + ", contents length: "
+                         + loadedContent.getSourceFile().length());
     }
 
     @Override
-    public void fileSaved(File source, File dest) {
-        log.info("fileSaved: " + source.getAbsolutePath() + " -> " + dest.getAbsolutePath());
+    public void fileSaved(Text text, File destFile) {
+        log.info("fileSaved: " + text.getSourceFile().getAbsolutePath() + " -> " + destFile.getAbsolutePath());
     }
 
     @Override

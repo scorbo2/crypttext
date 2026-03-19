@@ -5,7 +5,6 @@ import ca.corbett.crypttext.CryptTextResourceLoader;
 import ca.corbett.crypttext.Main;
 import ca.corbett.crypttext.RecentFilesManager;
 import ca.corbett.crypttext.Version;
-import ca.corbett.crypttext.VetoException;
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 import ca.corbett.crypttext.extensions.ExtraComponentPosition;
 import ca.corbett.crypttext.text.Text;
@@ -156,10 +155,6 @@ public final class MainWindow extends JFrame implements UIReloadable {
                 editorTabPane.clearIfScratch(); // Don't leave the default "Untitled" tab open if we load something.
                 editorTabPane.newTextTab(text, argFile.getName());
             }
-            catch (VetoException ignored) {
-                // An extension vetoed the load!
-                // Just skip it - TextManager has already logged the veto.
-            }
             catch (IOException | IllegalArgumentException e) {
                 getMessageUtil().error("File error",
                                        "An error occurred while trying to open the file:\n" + arg + "\n\n" +
@@ -212,10 +207,6 @@ public final class MainWindow extends JFrame implements UIReloadable {
                     if (editorTab.isDirty()) {
                         try {
                             editorTab.save();
-                        }
-                        catch (VetoException ignored) {
-                            // An extension vetoed the save!
-                            // Just skip it - EditorTab has already logged the veto (indirectly via TextManager).
                         }
                         catch (Exception ioe) {
                             // Just log it at this point... we are exiting:
@@ -436,7 +427,6 @@ public final class MainWindow extends JFrame implements UIReloadable {
         theme.setStyle("Decrypt", createLogConsoleStyle("Decrypt:", Color.CYAN));
         theme.setStyle("Load", createLogConsoleStyle("Load:", Color.MAGENTA));
         theme.setStyle("Save", createLogConsoleStyle("Save:", Color.MAGENTA));
-        theme.setStyle("Veto", createLogConsoleStyle("Veto:", Color.ORANGE));
 
         // Now let's register our theme and switch to it immediately:
         LogConsole.getInstance().registerTheme("CryptTextTheme", theme, true);

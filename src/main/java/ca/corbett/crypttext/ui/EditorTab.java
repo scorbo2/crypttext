@@ -2,7 +2,6 @@ package ca.corbett.crypttext.ui;
 
 import ca.corbett.crypttext.AppConfig;
 import ca.corbett.crypttext.CryptTextResourceLoader;
-import ca.corbett.crypttext.VetoException;
 import ca.corbett.crypttext.crypt.CryptMetadata;
 import ca.corbett.crypttext.crypt.CryptUtil;
 import ca.corbett.crypttext.crypt.DefaultCryptMetadata;
@@ -269,7 +268,7 @@ public class EditorTab extends JPanel implements UIReloadable {
      */
     public void close() {
         if (ownerPane.closeTab(this)) {
-            // Our request to close the tab was not canceled or vetoed, so we are actually closing:
+            // Our request to close the tab was not canceled, so we are actually closing:
             dispose();
 
             // Notify listeners:
@@ -301,13 +300,8 @@ public class EditorTab extends JPanel implements UIReloadable {
      * <p>
      * If this tab is associated with a scratch file, this method will immediately defer to the "save as" flow.
      * </p>
-     * <p>
-     * Application extensions have veto power over save operations!
-     * If any extension vetoes the save, then the save is canceled, a VetoException is thrown,
-     * and this tab remains dirty.
-     * </p>
      *
-     * @throws Exception on I/O error, encryption error, or if any extension vetoes the save operation.
+     * @throws Exception on I/O error or encryption error.
      */
     public void save() throws Exception {
         // If this is a scratch file, force a "save as" flow instead:
@@ -323,11 +317,10 @@ public class EditorTab extends JPanel implements UIReloadable {
         }
 
         // Now we can try to save the encrypted text to disk, without changing our in-memory contents:
-        // This will throw a VetoException if any extension vetoes the save, or possibly an IOException:
         diskContents = ownerPane.getTextManager().saveText(diskContents, textToSave.getText());
 
         // Update our CryptMetadata, which may have changed above:
-        // (we do this after the save, in case the save fails or was vetoed):
+        // (we do this after the save, in case the save fails):
         setCryptMetadata(textToSave.getCryptMetadata());
 
         // Okay, if we get here, our contents were saved in an encrypted state. Hooray!
@@ -341,11 +334,9 @@ public class EditorTab extends JPanel implements UIReloadable {
     /**
      * Prompts the user for a new save location for this tab, saves the contents
      * to that location, then marks this tab as clean.
-     * If any extension vetoes the save, then the save is canceled, and this tab remains dirty.
      * Text that was loaded from an encrypted file will be saved in an encrypted state.
      */
     public void saveAs() throws Exception {
-        boolean wasDirty = isDirty(); // make a note of our current state, so we can restore it if the save is vetoed
         JFileChooser fileChooser = MainWindow.getInstance().getFileChooser();
         int result = fileChooser.showSaveDialog(MainWindow.getInstance());
         if (result == JFileChooser.APPROVE_OPTION) {
@@ -364,28 +355,20 @@ public class EditorTab extends JPanel implements UIReloadable {
                 }
             }
 
-            try {
-                // Handle encryption of our in-memory contents before saving, if needed:
-                EncryptedText textToSave = resolveTextForSave();
-                if (textToSave == null) {
-                    return; // user canceled encryption prompt
-                }
-                File newFile = fileChooser.getSelectedFile();
-                diskContents = ownerPane.getTextManager().saveTextAs(diskContents, textToSave.getText(), newFile);
-                setCryptMetadata(textToSave.getCryptMetadata()); // update this, as it may have changed
-                markClean();
+            // Handle encryption of our in-memory contents before saving, if needed:
+            EncryptedText textToSave = resolveTextForSave();
+            if (textToSave == null) {
+                return; // user canceled encryption prompt
+            }
+            File newFile = fileChooser.getSelectedFile();
+            diskContents = ownerPane.getTextManager().saveTextAs(diskContents, textToSave.getText(), newFile);
+            setCryptMetadata(textToSave.getCryptMetadata()); // update this, as it may have changed
+            markClean();
 
-                // If we were a scratch file, we now have an actual name.
-                // If we weren't a scratch file, our name has likely changed.
-                setTabName(newFile.getName());
-            }
-            catch (VetoException ignored) {
-                // Save was vetoed by an extension!
-                // Veto already logged by TextManager - just stay dirty and do nothing here.
-                if (wasDirty) {
-                    markDirty();
-                }
-            }
+            // If we were a scratch file, we now have an actual name.
+            // If we weren't a scratch file, our name has likely changed.
+            // Either way, update our tab header with the new file name:
+            setTabName(newFile.getName());
         }
     }
 
@@ -396,11 +379,9 @@ public class EditorTab extends JPanel implements UIReloadable {
      * associated password. It is assumed that whatever action triggers
      * this method has already prompted the user for confirmation.
      *
-     * @throws Exception If the save operation fails or is vetoed by an extension, or if the decrypt fails.
+     * @throws Exception If the save operation fails or if the decrypt fails.
      */
     public void saveUnencrypted() throws Exception {
-        boolean wasDirty = isDirty();
-        boolean wasEncrypted = isEncrypted();
         File sourceFile = diskContents.getSourceFile();
         JFileChooser fileChooser = MainWindow.getInstance().getFileChooser();
         fileChooser.setCurrentDirectory(diskContents.getSourceFile().getParentFile());
@@ -421,37 +402,20 @@ public class EditorTab extends JPanel implements UIReloadable {
                 }
             }
 
-            try {
-                if (isEncrypted()) {
-                    decryptInMemory(); // Will handle prompting for password as needed, may throw if this fails.
-                }
-
-                File newFile = fileChooser.getSelectedFile();
-                diskContents = ownerPane.getTextManager().saveTextAs(diskContents, getMemoryContents(), newFile);
-                markClean();
-
-                // If we were a scratch file, we now have an actual name.
-                // If we weren't a scratch file, our name has likely changed.
-                setTabName(newFile.getName());
-
-                // Overwrite any CryptMetadata we had and immediately forget our password:
-                setCryptMetadata(new DefaultCryptMetadata(false));
+            if (isEncrypted()) {
+                decryptInMemory(); // Will handle prompting for password as needed, may throw if this fails.
             }
-            catch (VetoException ignored) {
-                // Save was vetoed by an extension!
-                // We're in a wonky state now, because we've possibly already decrypted in memory.
-                // So, mark ourselves as dirty so the user will know that we need a save.
-                if (wasDirty) {
-                    markDirty();
-                }
 
-                // If we performed an in-memory decryption above, the user should be warned:
-                if (wasEncrypted) {
-                    markDirty();
-                    getMessageUtil().warning("Save vetoed",
-                                             "The save was vetoed by an extension. Note: your tab is now showing decrypted content.");
-                }
-            }
+            File newFile = fileChooser.getSelectedFile();
+            diskContents = ownerPane.getTextManager().saveTextAs(diskContents, getMemoryContents(), newFile);
+            markClean();
+
+            // If we were a scratch file, we now have an actual name.
+            // If we weren't a scratch file, our name has likely changed.
+            setTabName(newFile.getName());
+
+            // Overwrite any CryptMetadata we had and immediately forget our password:
+            setCryptMetadata(new DefaultCryptMetadata(false));
         }
     }
 
@@ -496,7 +460,7 @@ public class EditorTab extends JPanel implements UIReloadable {
      * and updates the in-memory contents to the decrypted version.
      * This does NOT trigger a save, or modify the disk contents in any way.
      * If the text was not actually encrypted, this method does nothing.
-     * This operation is subject to user cancellation, extension veto,
+     * This operation is subject to user cancellation
      * or decryption failure due to wrong password or corrupted text,
      * in which case the in-memory contents will remain unchanged.
      *
@@ -782,7 +746,11 @@ public class EditorTab extends JPanel implements UIReloadable {
 
         // Now we're good to go:
         String cipherText = CryptUtil.encryptAndWrap(defaultCryptMetadata.getPassword(), toEncrypt);
-        return new EncryptedText(cipherText, defaultCryptMetadata);
+        EncryptedText cryptText = new EncryptedText(cipherText, defaultCryptMetadata);
+
+        // Notify extensions:
+        extManager.textWasEncrypted(toEncrypt, cryptText);
+        return cryptText;
     }
 
     /**
@@ -792,7 +760,7 @@ public class EditorTab extends JPanel implements UIReloadable {
      *
      * @param toDecrypt Any text contents.
      * @return The decrypted version of the given text, or null if user cancels.
-     * @throws Exception if any extension vetoes the decryption operation or if the decrypt itself fails.
+     * @throws Exception if the decrypt fails.
      */
     private String handleDecrypt(String toDecrypt) throws Exception {
         if (toDecrypt == null) {
@@ -806,8 +774,9 @@ public class EditorTab extends JPanel implements UIReloadable {
         }
 
         // First, give extensions a chance to handle the decryption:
+        EncryptedText cryptText = new EncryptedText(toDecrypt, getCryptMetadata());
         CryptTextExtensionManager extManager = CryptTextExtensionManager.getInstance();
-        String decrypted = extManager.textWillDecrypt(new EncryptedText(toDecrypt, getCryptMetadata()));
+        String decrypted = extManager.textWillDecrypt(cryptText);
         if (decrypted != null) {
             return decrypted; // we're done - some extension did the work for us!
         }
@@ -833,7 +802,11 @@ public class EditorTab extends JPanel implements UIReloadable {
 
         try {
             // Decrypt and return the result:
-            return CryptUtil.unwrapAndDecrypt(defaultCryptMetadata.getPassword(), toDecrypt);
+            String plaintext = CryptUtil.unwrapAndDecrypt(defaultCryptMetadata.getPassword(), toDecrypt);
+
+            // Notify extensions:
+            extManager.textWasDecrypted(cryptText, plaintext);
+            return plaintext;
         }
         catch (Exception ex) {
             // If anything goes wrong, immediately forget the password we just tried:

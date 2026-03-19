@@ -3,7 +3,7 @@ package ca.corbett.crypttext.text;
 /**
  * Used with TextManager to listen for text change events. These are generated from
  * the saveTextAs() method, when one Text instance is written to the same file
- * as another Text instance, and no listener vetoed the save.
+ * as another Text instance.
  * Owners of the stale Text instance should either load the given new value,
  * or prompt the user for what to do with unsaved changes in the stale instance.
  *
