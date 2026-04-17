@@ -38,6 +38,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.MalformedInputException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -152,6 +153,15 @@ public final class MainWindow extends JFrame implements UIReloadable {
 
             // If so, let's load each one into a new tab:
             try {
+                // The swing-extras library gives us an easy way to do a quick sanity check on
+                // our input arguments, to make sure they are valid text files before we try to load them:
+                if (!TextFileDetector.isTextFile(argFile)) {
+                    getMessageUtil().error("Not a text file",
+                                           "The file " + arg + " does not appear to be a text file.");
+                    continue;
+                }
+
+                // Now it is reasonably safe to try to load it:
                 Text text = editorTabPane.getTextManager().fromFile(argFile);
                 editorTabPane.clearIfScratch(); // Don't leave the default "Untitled" tab open if we load something.
                 editorTabPane.newTextTab(text, argFile.getName());
@@ -160,7 +170,19 @@ public final class MainWindow extends JFrame implements UIReloadable {
                 // An extension vetoed the load!
                 // Just skip it - TextManager has already logged the veto.
             }
+            catch (MalformedInputException mfe) {
+                // Java's NIO classes will throw this if the file is not valid text.
+                // Our TextFileDetector will probably weed those ones out above, but
+                // let's be extra careful, so that we don't give the user a meaningless error message.
+                getMessageUtil().info("Unable to open file",
+                                      "The file " + arg + " does not appear to be a valid text file.");
+
+                // We can log the actual message we got, but it probably won't mean much to the user:
+                logger.warning("MalformedInputException while trying to load file \""
+                                       + arg + "\": " + mfe.getMessage());
+            }
             catch (IOException | IllegalArgumentException e) {
+                // For all other errors, we can just show whatever we get from the exception:
                 getMessageUtil().error("File error",
                                        "An error occurred while trying to open the file:\n" + arg + "\n\n" +
                                                "Error message: " + e.getMessage(),

@@ -2,6 +2,7 @@ CryptText Release Notes
 ==============================================
 
 Version 1.2 - [TODO release date] Maintenance release
+  #82 - Better error messaging for startup arguments
   #80 - Fix bug in status bar (update on save)
   #78 - Upgrade to swing-extras 2.9
 
