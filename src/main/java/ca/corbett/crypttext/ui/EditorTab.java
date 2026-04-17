@@ -70,8 +70,9 @@ public class EditorTab extends JPanel implements UIReloadable {
 
     /**
      * Listeners can subscribe to receive notification when this tab is closed.
-     * Note that this event is not vetoable. Listeners are notified AFTER the
-     * tab is closed. This is informational.
+     * Note that this event is not vetoable. Listeners are notified during
+     * tab closure, immediately before dispose(). This is informational,
+     * and cannot be vetoed or canceled.
      */
     @FunctionalInterface
     public interface TabClosedListener {
@@ -282,11 +283,11 @@ public class EditorTab extends JPanel implements UIReloadable {
      */
     public void close() {
         if (ownerPane.closeTab(this)) {
-            // Our request to close the tab was not canceled or vetoed, so we are actually closing:
-            dispose();
-
             // Notify listeners:
             fireTabClosedEvent();
+
+            // Our request to close the tab was not canceled or vetoed, so we are actually closing:
+            dispose();
         }
     }
 
