@@ -1005,7 +1005,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         tabSavedListeners.remove(listener);
     }
 
-    public void fireTabSavedEvent(File saveFile) {
+    private void fireTabSavedEvent(File saveFile) {
         // If no one is listening, don't bother:
         if (tabSavedListeners.isEmpty()) {
             return;
