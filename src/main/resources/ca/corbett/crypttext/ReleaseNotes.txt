@@ -2,6 +2,8 @@ CryptText Release Notes
 ==============================================
 
 Version 1.2 - [TODO release date] Maintenance release
+  #80 - Fix bug in status bar (update on save)
+  #78 - Upgrade to swing-extras 2.9
 
 Version 1.1 - [2026-03-13] Maintenance release
   #69 - Make undo/redo smarter about updating clean/dirty status.

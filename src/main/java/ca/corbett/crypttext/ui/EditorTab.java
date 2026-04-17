@@ -78,12 +78,24 @@ public class EditorTab extends JPanel implements UIReloadable {
         void onTabClosed(EditorTab tab);
     }
 
+    /**
+     * Listeners can subscribe to receive notification when save() is successfully
+     * invoked on this tab. The supplied File is the file that was actually written to,
+     * which may differ from the source file if this tab was created from a scratch file,
+     * or if "save as" was used.
+     */
+    @FunctionalInterface
+    public interface TabSavedListener {
+        void onTabSaved(EditorTab tab, File savedFile);
+    }
+
     private static final Logger log = Logger.getLogger(EditorTab.class.getName());
     private MessageUtil messageUtil;
 
     private final List<PositionListener> positionListeners;
     private final List<ContentChangeListener> contentChangeListeners;
     private final List<TabClosedListener> tabClosedListeners;
+    private final List<TabSavedListener> tabSavedListeners;
     private final EditorTabPane ownerPane;
     private final JTextPane textPane; // stores our memoryContents
     private final JScrollPane scrollPane;
@@ -118,6 +130,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         this.positionListeners = new CopyOnWriteArrayList<>();
         this.contentChangeListeners = new CopyOnWriteArrayList<>();
         this.tabClosedListeners = new CopyOnWriteArrayList<>();
+        this.tabSavedListeners = new CopyOnWriteArrayList<>();
         this.ownerPane = ownerPane;
         this.name = name;
         textPane = new JTextPane();
@@ -284,6 +297,10 @@ public class EditorTab extends JPanel implements UIReloadable {
         UIReloadAction.getInstance().unregisterReloadable(this); // stop listening
         undoableEditListener.flush(); // commit any pending group and stop the timer
         textPane.getDocument().removeUndoableEditListener(undoableEditListener);
+        positionListeners.clear();
+        contentChangeListeners.clear();
+        tabClosedListeners.clear();
+        tabSavedListeners.clear();
     }
 
     /**
@@ -336,6 +353,8 @@ public class EditorTab extends JPanel implements UIReloadable {
         // but it makes sense when you consider the above flow: the in-memory contents were
         // successfully encrypted and saved to disk.
         markClean();
+
+        fireTabSavedEvent(diskContents.getSourceFile());
     }
 
     /**
@@ -969,6 +988,39 @@ public class EditorTab extends JPanel implements UIReloadable {
         catch (Exception e) {
             // If a listener throws a runtime exception, don't let it interfere with this EditorTab:
             log.warning("Failed to fire tab closed event: " + e.getMessage());
+        }
+    }
+
+    public void addTabSavedListener(TabSavedListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener cannot be null");
+        }
+        tabSavedListeners.add(listener);
+    }
+
+    public void removeTabSavedListener(TabSavedListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener cannot be null");
+        }
+        tabSavedListeners.remove(listener);
+    }
+
+    public void fireTabSavedEvent(File saveFile) {
+        // If no one is listening, don't bother:
+        if (tabSavedListeners.isEmpty()) {
+            return;
+        }
+
+        // Notify listeners:
+        try {
+            // Iterate over a copy of the list to avoid ConcurrentModificationExceptions:
+            for (TabSavedListener listener : new ArrayList<>(tabSavedListeners)) {
+                listener.onTabSaved(this, saveFile);
+            }
+        }
+        catch (Exception e) {
+            // If a listener throws a runtime exception, don't let it interfere with this EditorTab:
+            log.warning("Failed to fire tab saved event: " + e.getMessage());
         }
     }
 
