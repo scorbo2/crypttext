@@ -398,6 +398,8 @@ public class EditorTab extends JPanel implements UIReloadable {
                 // If we were a scratch file, we now have an actual name.
                 // If we weren't a scratch file, our name has likely changed.
                 setTabName(newFile.getName());
+
+                fireTabSavedEvent(diskContents.getSourceFile());
             }
             catch (VetoException ignored) {
                 // Save was vetoed by an extension!
@@ -456,6 +458,8 @@ public class EditorTab extends JPanel implements UIReloadable {
 
                 // Overwrite any CryptMetadata we had and immediately forget our password:
                 setCryptMetadata(new DefaultCryptMetadata(false));
+
+                fireTabSavedEvent(diskContents.getSourceFile());
             }
             catch (VetoException ignored) {
                 // Save was vetoed by an extension!
