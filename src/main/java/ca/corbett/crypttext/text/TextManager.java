@@ -3,6 +3,7 @@ package ca.corbett.crypttext.text;
 import ca.corbett.crypttext.Version;
 import ca.corbett.crypttext.VetoException;
 import ca.corbett.extras.io.FileSystemUtil;
+import ca.corbett.extras.io.TextFileDetector;
 
 import java.io.File;
 import java.io.IOException;
@@ -160,6 +161,11 @@ public class TextManager {
         Text newText = fromCache(file);
         if (newText != null) {
             return newText;
+        }
+
+        // Let's try to see if it's actually a text file before we proceed:
+        if (!TextFileDetector.isTextFile(file)) {
+            throw new IOException("The given file does not appear to be a text file: " + file.getAbsolutePath());
         }
 
         // Give listeners a chance to veto:
