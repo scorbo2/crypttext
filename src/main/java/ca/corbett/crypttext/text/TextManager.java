@@ -141,8 +141,9 @@ public class TextManager {
      * Extensions can veto this operation! A VetoException will be thrown if that happens.
      * Calling code must gracefully respond to this.
      * <p>
-     * No check is done here to make sure the given file is a valid text file!
-     * Such validation can be done ahead of time with the TextFileDetector class.
+     * A basic check is done (via TextFileDetector) to see if the given file appears to
+     * be a text file, before the load is attempted. If it doesn't appear to be a text file, an IOException
+     * is thrown with a helpful message.
      * </p>
      *
      * @param file The file to load from. Must be a valid, readable file (not a directory).
