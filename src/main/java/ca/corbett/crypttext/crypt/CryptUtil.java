@@ -128,10 +128,10 @@ public class CryptUtil {
                 return false; // nope
             }
 
-            // We only need the first kilobyte or so to do our check, no need to load the whole file:
-            byte[] buffer = new byte[1024];
+            // We only need the first kilobyte or so to do our check, no need to load the whole file.
+            // However, the user is free to modify the wrapper above our header line, so let's be generous:
+            byte[] buffer = new byte[4096]; // 4KB should be more than enough to find our header if it's there
             try (FileInputStream fis = new FileInputStream(file)) {
-                // Read up to 1024 bytes into the buffer
                 int bytesRead = fis.read(buffer);
                 if (bytesRead != -1) {
                     // Convert only the actual bytes read into a String
