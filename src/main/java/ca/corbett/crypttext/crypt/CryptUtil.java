@@ -2,6 +2,8 @@ package ca.corbett.crypttext.crypt;
 
 import ca.corbett.crypttext.DecryptionFailedException;
 import ca.corbett.extras.ResourceLoader;
+import ca.corbett.extras.io.FileSystemUtil;
+import ca.corbett.extras.io.TextFileDetector;
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
 import org.bouncycastle.crypto.params.Argon2Parameters;
 
@@ -9,6 +11,9 @@ import javax.crypto.AEADBadTagException;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Arrays;
@@ -36,6 +41,114 @@ public class CryptUtil {
     private static final int TAG_LENGTH = 128; // 128-bit authentication tag
 
     /**
+     * Given a file, will attempt to encrypt it in place with the given password.
+     * If the file is already encrypted, no action is taken.
+     * If the file can't be read or written, or if it does not exist, an exception will be thrown.
+     *
+     * @param file     any file to encrypt (must not be null, must exist, must be a file, and must be readable and writable)
+     * @param password the password to use for encryption (must not be null or empty)
+     * @throws Exception if the file can't be read or written or does not exist, or if encryption fails.
+     */
+    public static void encryptInPlace(File file, String password) throws Exception {
+        if (file == null || !file.exists() || !file.isFile() || !file.canRead() || !file.canWrite()) {
+            throw new IOException("The given file does not exist, is not a file, or cannot be read/written: "
+                                          + (file != null ? file.getAbsolutePath() : "null"));
+        }
+
+        // If the file is already encrypted, just silently skip it:
+        if (isCryptTextWrapped(file)) {
+            return;
+        }
+
+        // Make sure it's a text file:
+        if (!TextFileDetector.isTextFile(file)) {
+            throw new IOException("The given file is not a text file: " + file.getAbsolutePath());
+        }
+
+        // Now we can encrypt it and save results back to the same file:
+        String rawContents = FileSystemUtil.readFileToString(file);
+        encryptAndWrap(password, rawContents, file);
+    }
+
+    /**
+     * Given a file, will attempt to decrypt it in place with the given password.
+     * If the file is not encrypted, no action is taken.
+     * If the file can't be read or written, or if it does not exist, an exception will be thrown.
+     *
+     * @param file     any file to decrypt (must not be null, must exist, must be a file, and must be readable and writable)
+     * @param password the password to use for decryption (must not be null or empty)
+     * @throws Exception if the file can't be read or written or does not exist, if decryption fails, or if authentication fails.
+     */
+    public static void decryptInPlace(File file, String password) throws Exception {
+        if (file == null || !file.exists() || !file.isFile() || !file.canRead() || !file.canWrite()) {
+            throw new IOException("The given file does not exist, is not a file, or cannot be read/written: "
+                                          + (file != null ? file.getAbsolutePath() : "null"));
+        }
+
+        // If the file is not encrypted, just silently skip it:
+        if (!isCryptTextWrapped(file)) {
+            return;
+        }
+
+        // Make sure it's a text file:
+        if (!TextFileDetector.isTextFile(file)) {
+            throw new IOException("The given file is not a text file: " + file.getAbsolutePath());
+        }
+
+        // Now we can decrypt it and save results back to the same file:
+        String decrypted = unwrapAndDecrypt(password, file);
+        FileSystemUtil.writeStringToFile(decrypted, file);
+    }
+
+    /**
+     * Reports whether the given file is a text file that looks like it was
+     * created with CryptText (that is, it contains our expected header string).
+     * This method gives up easily - if any exception occurs while accessing the
+     * file, or if the file gives any indication of not being a text file,
+     * we return false.
+     * <p>
+     * <b>Note!</b> This method does not tell you if the given encrypted payload is
+     * valid and can be decrypted successfully. We merely examine the file and
+     * check for indicators that it <i>might</i> be a wrapped crypt text payload.
+     * False positives are possible! Don't assume decryption will succeed.
+     * </p>
+     *
+     * @param file The file to check.
+     * @return true ONLY if the file is a valid text file that is readable and contains our expected header.
+     */
+    public static boolean isCryptTextWrapped(File file) {
+        // Handle the easy checks first:
+        if (file == null || !file.exists() || !file.isFile() || !file.canRead()) {
+            return false; // nope
+        }
+
+        try {
+            // Let's see if it looks like a text file:
+            if (!TextFileDetector.isTextFile(file)) {
+                return false; // nope
+            }
+
+            // We only need the first kilobyte or so to do our check, no need to load the whole file.
+            // However, the user is free to modify the wrapper above our header line, so let's be generous:
+            byte[] buffer = new byte[4096]; // 4KB should be more than enough to find our header if it's there
+            try (FileInputStream fis = new FileInputStream(file)) {
+                int bytesRead = fis.read(buffer);
+                if (bytesRead != -1) {
+                    // Convert only the actual bytes read into a String
+                    String firstKB = new String(buffer, 0, bytesRead, StandardCharsets.UTF_8);
+                    return isCryptTextWrapped(firstKB);
+                }
+            }
+        }
+        catch (IOException ioe) {
+            // If anything goes wrong here, we just assume it's not a valid wrapped file:
+            return false;
+        }
+
+        return false; // if we couldn't read anything, it's not valid
+    }
+
+    /**
      * Reports whether the given text contains the expected header string that
      * indicates it is a wrapped crypt text payload.
      * <p>
@@ -59,6 +172,23 @@ public class CryptUtil {
 
     /**
      * Encrypts the given plaintext with the provided password, performs a Mime Base64 encoding of the result,
+     * and then wraps the encoded string into a user-viewable wrapper message and writes it to outputFile.
+     *
+     * @param password   the password to use for encryption (must not be null or empty)
+     * @param plaintext  the data to encrypt (must not be null)
+     * @param outputFile the file to write the wrapped message to (must not be null)
+     * @throws Exception if encryption fails, if writing to the file fails, or if input parameters are invalid
+     */
+    public static void encryptAndWrap(String password, String plaintext, File outputFile) throws Exception {
+        if (outputFile == null) {
+            throw new IllegalArgumentException("Output file cannot be null");
+        }
+        String wrapped = encryptAndWrap(password, plaintext);
+        FileSystemUtil.writeStringToFile(wrapped, outputFile);
+    }
+
+    /**
+     * Encrypts the given plaintext with the provided password, performs a Mime Base64 encoding of the result,
      * and then wraps the encoded string into a user-viewable wrapper message.
      *
      * @param password  the password to use for encryption (must not be null or empty)
@@ -71,6 +201,41 @@ public class CryptUtil {
             throw new IllegalArgumentException("Plaintext cannot be null");
         }
         return TEXT_WRAPPER + "\n" + encryptAndEncode(password, plaintext.getBytes(StandardCharsets.UTF_8)) + "\n";
+    }
+
+    /**
+     * Given any file, will attempt to extract an encrypted payload from it and return it as plaintext.
+     * If the file is not encrypted, this will simply return its contents as a string (if it's a text file).
+     * If the given file is not a text file or can't be read, this will throw an exception.
+     *
+     * @param password the password to use for decryption (must not be null or empty)
+     * @param file     any file containing an encrypted payload (must not be null).
+     * @return the decrypted plaintext if the file was encrypted, or the file contents if it was not encrypted.
+     * @throws Exception if the file can't be read, if it's not a text file, if decryption fails, or if authentication fails.
+     */
+    public static String unwrapAndDecrypt(String password, File file) throws Exception {
+        if (file == null) {
+            throw new IllegalArgumentException("File cannot be null");
+        }
+        if (!file.exists() || !file.isFile() || !file.canRead()) {
+            throw new IOException("The given file does not exist, is not a file, or cannot be read: "
+                                          + file.getAbsolutePath());
+        }
+
+        // Let's make sure it's a text file:
+        if (!TextFileDetector.isTextFile(file)) {
+            throw new IOException("The given file is not a text file: " + file.getAbsolutePath());
+        }
+
+        String rawContents = FileSystemUtil.readFileToString(file);
+        if (isCryptTextWrapped(rawContents)) {
+            // It's wrapped, so we need to unwrap and decrypt it:
+            return unwrapAndDecrypt(password, rawContents);
+        }
+        else {
+            // It's not wrapped, so we just return the raw contents:
+            return rawContents;
+        }
     }
 
     /**
