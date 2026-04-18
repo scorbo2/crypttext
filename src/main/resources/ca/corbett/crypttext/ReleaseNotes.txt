@@ -2,6 +2,7 @@ CryptText Release Notes
 ==============================================
 
 Version 1.2 - [TODO release date] Maintenance release
+  #86 - EditorTab: handle disk contents changing while tab is open.
   #84 - More convenience methods in CryptUtil
   #82 - Better error messaging when loading non-text files
   #80 - Fix bug in status bar (update on save)

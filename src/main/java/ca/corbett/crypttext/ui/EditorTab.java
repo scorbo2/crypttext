@@ -480,6 +480,110 @@ public class EditorTab extends JPanel implements UIReloadable {
     }
 
     /**
+     * Invoked when the application detects that the source file on disk has been
+     * modified or deleted while this editor tab is open. Presents the user with
+     * a question dialog offering options for how to handle the situation.
+     * If the user cancels the dialog without choosing an option, the default
+     * action is "Ignore" (mark the tab as dirty and do nothing further).
+     * The "Reload" option is only shown if the source file still exists on disk.
+     */
+    public void diskContentsChanged() {
+        File sourceFile = diskContents.getSourceFile();
+        boolean fileStillExists = sourceFile.exists();
+
+        // Build the list of options - "Reload" is only shown if the file still exists:
+        String[] options;
+        if (fileStillExists) {
+            options = new String[]{
+                    "Save (overwrite disk contents with editor contents)",
+                    "Save as",
+                    "Ignore (contents will be out of sync with disk!)",
+                    "Close without saving",
+                    "Reload"
+            };
+        }
+        else {
+            options = new String[]{
+                    "Save (overwrite disk contents with editor contents)",
+                    "Save as",
+                    "Ignore (contents will be out of sync with disk!)",
+                    "Close without saving"
+            };
+        }
+
+        String choice = getMessageUtil().askSelect(
+                "Disk contents changed",
+                "The contents on disk have been modified or deleted.\nWhat would you like to do?",
+                options,
+                "Ignore (contents will be out of sync with disk!)"
+        );
+
+        // Default action on cancel (null return) is "Ignore":
+        if (choice == null || choice.equals("Ignore (contents will be out of sync with disk!)")) {
+            markDirty();
+            return;
+        }
+
+        switch (choice) {
+            case "Save (overwrite disk contents with editor contents)" -> {
+                try {
+                    save();
+                }
+                catch (VetoException ignored) {
+                    // An extension vetoed the save - mark dirty so the user knows a save is still needed.
+                    markDirty();
+                }
+                catch (Exception e) {
+                    markDirty();
+                    getMessageUtil().error("Error saving file: " + e.getMessage(), e);
+                }
+            }
+            case "Save as" -> {
+                try {
+                    saveAs();
+                }
+                catch (Exception e) {
+                    markDirty();
+                    getMessageUtil().error("Error saving file: " + e.getMessage(), e);
+                }
+            }
+            case "Close without saving" -> {
+                boolean wasDirty = isDirty();
+                markClean(); // clear dirty flag so closeTab() won't prompt for save
+                close();
+                if (getParent() != null && wasDirty) {
+                    // The close was canceled (for example by a scratch-tab prompt), so restore the original state.
+                    markDirty();
+                }
+            }
+            case "Reload" -> {
+                // Capture references before closing, as dispose() will clean up state:
+                EditorTabPane pane = ownerPane;
+                boolean wasDirty = isDirty();
+                markClean(); // clear dirty flag so closeTab() won't prompt for save
+                close();
+                if (getParent() != null) {
+                    // The tab did not close, so do not continue with reload.
+                    if (wasDirty) {
+                        markDirty();
+                    }
+                    return;
+                }
+                // Now open a new tab with the updated disk contents:
+                try {
+                    pane.newTextTab(sourceFile);
+                }
+                catch (IllegalArgumentException e) {
+                    getMessageUtil().error("Error reloading file: " + e.getMessage(), e);
+                }
+                catch (Exception e) {
+                    getMessageUtil().error("Error reloading file: " + e.getMessage(), e);
+                }
+            }
+        }
+    }
+
+    /**
      * Encrypts the current in-memory text contents of this tab,
      * and updates the in-memory contents to the encrypted version.
      * This does NOT trigger a save, or modify the disk contents in any way.
