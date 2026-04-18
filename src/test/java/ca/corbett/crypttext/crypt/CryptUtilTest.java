@@ -352,8 +352,7 @@ class CryptUtilTest {
         String password = "mysecretpassword";
         String plaintext = "This is a secret message.";
         File tempFile = File.createTempFile("crypttest", ".txt", tempDir);
-        String crypted = CryptUtil.encryptAndWrap(password, plaintext);
-        FileSystemUtil.writeStringToFile(crypted, tempFile);
+        FileSystemUtil.writeStringToFile(plaintext, tempFile);
 
         // WHEN we encrypt it in-place:
         CryptUtil.encryptInPlace(tempFile, password);
@@ -367,6 +366,42 @@ class CryptUtilTest {
         // THEN we should get back the original plaintext:
         String actual = FileSystemUtil.readFileToString(tempFile);
         assertEquals(plaintext, actual, "Decrypted content from file should match original plaintext");
+    }
+
+    @Test
+    public void encryptInPlace_alreadyEncrypted_shouldDoNothing() throws Exception {
+        // GIVEN a file that is already encrypted:
+        String password = "mysecretpassword";
+        String plaintext = "This is a secret message.";
+        File tempFile = File.createTempFile("crypttest", ".txt", tempDir);
+        CryptUtil.encryptAndWrap(password, plaintext, tempFile);
+        long fileSizeBefore = tempFile.length();
+        long lastModifiedBefore = tempFile.lastModified();
+
+        // WHEN we try to encrypt it in place:
+        CryptUtil.encryptInPlace(tempFile, password);
+
+        // THEN nothing should happen:
+        assertEquals(fileSizeBefore, tempFile.length(), "File size should not change");
+        assertEquals(lastModifiedBefore, tempFile.lastModified(), "Last modified timestamp should not change");
+    }
+
+    @Test
+    public void decryptInPlace_notEncrypted_shouldDoNothing() throws Exception {
+        // GIVEN a file that is not encrypted:
+        String password = "mysecretpassword";
+        String plaintext = "This is a secret message.";
+        File tempFile = File.createTempFile("crypttest", ".txt", tempDir);
+        FileSystemUtil.writeStringToFile(plaintext, tempFile);
+        long fileSizeBefore = tempFile.length();
+        long lastModifiedBefore = tempFile.lastModified();
+
+        // WHEN we try to decrypt it in place:
+        CryptUtil.decryptInPlace(tempFile, password);
+
+        // THEN nothing should happen:
+        assertEquals(fileSizeBefore, tempFile.length(), "File size should not change");
+        assertEquals(lastModifiedBefore, tempFile.lastModified(), "Last modified timestamp should not change");
     }
 
     /**
