@@ -480,6 +480,78 @@ public class EditorTab extends JPanel implements UIReloadable {
     }
 
     /**
+     * Invoked when the application detects that the source file on disk has been
+     * modified or deleted while this editor tab is open. Presents the user with
+     * a question dialog offering options for how to handle the situation.
+     * If the user cancels the dialog without choosing an option, the default
+     * action is "Ignore" (mark the tab as dirty and do nothing further).
+     * The "Reload" option is only shown if the source file still exists on disk.
+     */
+    public void diskContentsChanged() {
+        File sourceFile = diskContents.getSourceFile();
+        boolean fileStillExists = sourceFile.exists();
+
+        // Build the list of options - "Reload" is only shown if the file still exists:
+        String[] options;
+        if (fileStillExists) {
+            options = new String[]{"Save", "Save as", "Ignore", "Close", "Reload"};
+        }
+        else {
+            options = new String[]{"Save", "Save as", "Ignore", "Close"};
+        }
+
+        String choice = getMessageUtil().askSelect(
+                "Disk contents changed",
+                "The contents on disk have been modified or deleted.\nWhat would you like to do?",
+                options,
+                "Ignore"
+        );
+
+        // Default action on cancel (null return) is "Ignore":
+        if (choice == null || choice.equals("Ignore")) {
+            markDirty();
+            return;
+        }
+
+        switch (choice) {
+            case "Save" -> {
+                try {
+                    save();
+                }
+                catch (VetoException ignored) {
+                    // An extension vetoed the save - nothing more to do here.
+                }
+                catch (Exception e) {
+                    getMessageUtil().error("Error saving file: " + e.getMessage(), e);
+                }
+            }
+            case "Save as" -> {
+                try {
+                    saveAs();
+                }
+                catch (VetoException ignored) {
+                    // An extension vetoed the save - nothing more to do here.
+                }
+                catch (Exception e) {
+                    getMessageUtil().error("Error saving file: " + e.getMessage(), e);
+                }
+            }
+            case "Close" -> {
+                markClean(); // clear dirty flag so closeTab() won't prompt for save
+                close();
+            }
+            case "Reload" -> {
+                // Capture references before closing, as dispose() will clean up state:
+                EditorTabPane pane = ownerPane;
+                markClean(); // clear dirty flag so closeTab() won't prompt for save
+                close();
+                // Now open a new tab with the updated disk contents:
+                pane.newTextTab(sourceFile);
+            }
+        }
+    }
+
+    /**
      * Encrypts the current in-memory text contents of this tab,
      * and updates the in-memory contents to the encrypted version.
      * This does NOT trigger a save, or modify the disk contents in any way.
