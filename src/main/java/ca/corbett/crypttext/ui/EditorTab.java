@@ -494,34 +494,47 @@ public class EditorTab extends JPanel implements UIReloadable {
         // Build the list of options - "Reload" is only shown if the file still exists:
         String[] options;
         if (fileStillExists) {
-            options = new String[]{"Save", "Save as", "Ignore", "Close", "Reload"};
+            options = new String[]{
+                    "Save (overwrite disk contents with editor contents)",
+                    "Save as",
+                    "Ignore (contents will be out of sync with disk!)",
+                    "Close without saving",
+                    "Reload"
+            };
         }
         else {
-            options = new String[]{"Save", "Save as", "Ignore", "Close"};
+            options = new String[]{
+                    "Save (overwrite disk contents with editor contents)",
+                    "Save as",
+                    "Ignore (contents will be out of sync with disk!)",
+                    "Close without saving"
+            };
         }
 
         String choice = getMessageUtil().askSelect(
                 "Disk contents changed",
                 "The contents on disk have been modified or deleted.\nWhat would you like to do?",
                 options,
-                "Ignore"
+                "Ignore (contents will be out of sync with disk!)"
         );
 
         // Default action on cancel (null return) is "Ignore":
-        if (choice == null || choice.equals("Ignore")) {
+        if (choice == null || choice.equals("Ignore (contents will be out of sync with disk!)")) {
             markDirty();
             return;
         }
 
         switch (choice) {
-            case "Save" -> {
+            case "Save (overwrite disk contents with editor contents)" -> {
                 try {
                     save();
                 }
                 catch (VetoException ignored) {
-                    // An extension vetoed the save - nothing more to do here.
+                    // An extension vetoed the save - mark dirty so the user knows a save is still needed.
+                    markDirty();
                 }
                 catch (Exception e) {
+                    markDirty();
                     getMessageUtil().error("Error saving file: " + e.getMessage(), e);
                 }
             }
@@ -530,13 +543,15 @@ public class EditorTab extends JPanel implements UIReloadable {
                     saveAs();
                 }
                 catch (VetoException ignored) {
-                    // An extension vetoed the save - nothing more to do here.
+                    // An extension vetoed the save - mark dirty so the user knows a save is still needed.
+                    markDirty();
                 }
                 catch (Exception e) {
+                    markDirty();
                     getMessageUtil().error("Error saving file: " + e.getMessage(), e);
                 }
             }
-            case "Close" -> {
+            case "Close without saving" -> {
                 markClean(); // clear dirty flag so closeTab() won't prompt for save
                 close();
             }
