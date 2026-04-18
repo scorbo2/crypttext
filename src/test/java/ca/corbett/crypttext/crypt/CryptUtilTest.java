@@ -342,7 +342,7 @@ class CryptUtilTest {
         String password = "password";
         File missingFile = new File(tempDir, "nonexistent.txt");
 
-        // WHEN we attempt to unwrapAndDecrypt from the missing file, THEN we should get an IllegalArgumentException:
+        // WHEN we attempt to unwrapAndDecrypt from the missing file, THEN we should get an IOException:
         assertThrows(IOException.class, () -> CryptUtil.unwrapAndDecrypt(password, missingFile));
     }
 
