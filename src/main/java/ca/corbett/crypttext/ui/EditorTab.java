@@ -548,14 +548,27 @@ public class EditorTab extends JPanel implements UIReloadable {
                 }
             }
             case "Close without saving" -> {
+                boolean wasDirty = isDirty();
                 markClean(); // clear dirty flag so closeTab() won't prompt for save
                 close();
+                if (getParent() != null && wasDirty) {
+                    // The close was canceled (for example by a scratch-tab prompt), so restore the original state.
+                    markDirty();
+                }
             }
             case "Reload" -> {
                 // Capture references before closing, as dispose() will clean up state:
                 EditorTabPane pane = ownerPane;
+                boolean wasDirty = isDirty();
                 markClean(); // clear dirty flag so closeTab() won't prompt for save
                 close();
+                if (getParent() != null) {
+                    // The tab did not close, so do not continue with reload.
+                    if (wasDirty) {
+                        markDirty();
+                    }
+                    return;
+                }
                 // Now open a new tab with the updated disk contents:
                 try {
                     pane.newTextTab(sourceFile);
