@@ -542,10 +542,6 @@ public class EditorTab extends JPanel implements UIReloadable {
                 try {
                     saveAs();
                 }
-                catch (VetoException ignored) {
-                    // An extension vetoed the save - mark dirty so the user knows a save is still needed.
-                    markDirty();
-                }
                 catch (Exception e) {
                     markDirty();
                     getMessageUtil().error("Error saving file: " + e.getMessage(), e);
