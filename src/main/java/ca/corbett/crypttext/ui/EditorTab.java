@@ -24,6 +24,8 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.DefaultCaret;
 import javax.swing.undo.UndoManager;
+import ca.corbett.crypttext.FileWatcher;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.io.File;
@@ -110,6 +112,7 @@ public class EditorTab extends JPanel implements UIReloadable {
     private boolean isDirty;
     private boolean eventsEnabled = true; // used to prevent firing events during programmatic text changes
     private String cleanContents; // snapshot of memory contents at the last markClean() – used for undo/redo dirty tracking
+    private FileWatcher fileWatcher; // watches the source file for external changes; null for scratch files
 
     /**
      * Creates a new, empty editor tab with the given name.
@@ -159,6 +162,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         MainWindow.configureDropTarget(textPane, getMessageUtil());
         UIReloadAction.getInstance().registerReloadable(this);
         reloadUI(); // force an immediate update to pick up the correct theme and color scheme
+        startFileWatcher();
     }
 
     /**
@@ -302,6 +306,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         contentChangeListeners.clear();
         tabClosedListeners.clear();
         tabSavedListeners.clear();
+        stopFileWatcher();
     }
 
     /**
@@ -356,6 +361,9 @@ public class EditorTab extends JPanel implements UIReloadable {
         markClean();
 
         fireTabSavedEvent(diskContents.getSourceFile());
+        if (fileWatcher != null) {
+            fileWatcher.ignoreSelfTriggeredChanges();
+        }
     }
 
     /**
@@ -399,6 +407,7 @@ public class EditorTab extends JPanel implements UIReloadable {
                 // If we weren't a scratch file, our name has likely changed.
                 setTabName(newFile.getName());
 
+                restartFileWatcher();
                 fireTabSavedEvent(diskContents.getSourceFile());
             }
             catch (VetoException ignored) {
@@ -459,6 +468,7 @@ public class EditorTab extends JPanel implements UIReloadable {
                 // Overwrite any CryptMetadata we had and immediately forget our password:
                 setCryptMetadata(new DefaultCryptMetadata(false));
 
+                restartFileWatcher();
                 fireTabSavedEvent(diskContents.getSourceFile());
             }
             catch (VetoException ignored) {
@@ -1172,4 +1182,47 @@ public class EditorTab extends JPanel implements UIReloadable {
         }
         return messageUtil;
     }
+
+    /**
+     * Starts the FileWatcher for the current source file, if the file is not a scratch file.
+     * Silently does nothing if the file watcher cannot be started for any reason.
+     */
+    private void startFileWatcher() {
+        if (isScratchFile()) {
+            return; // scratch files have no meaningful location to watch
+        }
+        File sourceFile = diskContents.getSourceFile();
+        if (sourceFile.getParentFile() == null) {
+            return; // no parent directory to watch
+        }
+        try {
+            fileWatcher = new FileWatcher(sourceFile,
+                                          () -> SwingUtilities.invokeLater(this::diskContentsChanged));
+            fileWatcher.start();
+        }
+        catch (IOException e) {
+            log.warning("Could not start file watcher for " + sourceFile.getAbsolutePath() + ": " + e.getMessage());
+            fileWatcher = null;
+        }
+    }
+
+    /**
+     * Stops the current FileWatcher if one is running, and sets it to null.
+     */
+    private void stopFileWatcher() {
+        if (fileWatcher != null) {
+            fileWatcher.stop();
+            fileWatcher = null;
+        }
+    }
+
+    /**
+     * Stops the current FileWatcher and starts a new one for the current source file.
+     * Used after a "save as" or "save unencrypted" operation changes the source file.
+     */
+    private void restartFileWatcher() {
+        stopFileWatcher();
+        startFileWatcher();
+    }
 }
+

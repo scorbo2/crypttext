@@ -1,0 +1,206 @@
+package ca.corbett.crypttext;
+
+import javax.swing.SwingUtilities;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.ClosedWatchServiceException;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+/**
+ * Watches a single file on disk for external changes (modify, delete, or create)
+ * and invokes a caller-supplied callback when a change is detected.
+ * <p>
+ * Uses Java NIO {@link WatchService} to monitor the directory that contains
+ * the watched file.  Only events for the exact target file are forwarded;
+ * changes to other files in the same directory are silently ignored.
+ * </p>
+ * <p>
+ * A debounce mechanism coalesces rapid bursts of events (such as those produced
+ * by editors that truncate-then-rewrite, or by IDEs that perform atomic saves
+ * via a temp-file rename) into a single callback invocation.
+ * </p>
+ * <p>
+ * The watcher runs on dedicated daemon threads and never blocks the Swing EDT.
+ * The supplied callback is invoked directly on the debouncer thread; callers
+ * that need to update Swing components should wrap their callback with
+ * {@link SwingUtilities#invokeLater}.
+ * </p>
+ * <p>
+ * Self-triggered events (events caused by the application saving the file
+ * itself) can be suppressed by calling {@link #ignoreSelfTriggeredChanges()}
+ * immediately after a self-initiated write.
+ * </p>
+ *
+ * @author <a href="https://github.com/scorbo2">scorbo2</a>
+ */
+public class FileWatcher {
+
+    private static final Logger log = Logger.getLogger(FileWatcher.class.getName());
+
+    /** Debounce window in milliseconds – events arriving within this window are coalesced. */
+    static final long DEBOUNCE_DELAY_MS = 300;
+
+    /** How long (ms) to suppress events after a self-initiated save. */
+    private static final long SUPPRESS_DURATION_MS = 1000;
+
+    private final File watchedFile;
+    private final Runnable onChange;
+
+    private WatchService watchService;
+    private ScheduledExecutorService debouncer;
+    private volatile ScheduledFuture<?> pendingEvent;
+    private volatile Thread watchThread;
+    private volatile boolean running;
+    private volatile long suppressUntil = 0;
+
+    /**
+     * Creates a new FileWatcher that will watch the given file.
+     * Call {@link #start()} to begin watching.
+     *
+     * @param file     The file to watch. Must not be null and must have a parent directory.
+     * @param onChange The callback invoked (on the debouncer thread) when a relevant change
+     *                 is detected on disk. Must not be null.
+     * @throws IllegalArgumentException if {@code file} or {@code onChange} is null,
+     *                                  or if {@code file} has no parent directory.
+     */
+    public FileWatcher(File file, Runnable onChange) {
+        if (file == null) {
+            throw new IllegalArgumentException("file cannot be null");
+        }
+        if (file.getParentFile() == null) {
+            throw new IllegalArgumentException("file must have a parent directory");
+        }
+        if (onChange == null) {
+            throw new IllegalArgumentException("onChange cannot be null");
+        }
+        this.watchedFile = file.getAbsoluteFile();
+        this.onChange = onChange;
+    }
+
+    /**
+     * Starts watching the file. Does nothing if the watcher is already running.
+     *
+     * @throws IOException if the underlying {@link WatchService} cannot be created or
+     *                     if the parent directory cannot be registered.
+     */
+    public void start() throws IOException {
+        if (running) {
+            return;
+        }
+        watchService = FileSystems.getDefault().newWatchService();
+        debouncer = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "FileWatcher-debouncer-" + watchedFile.getName());
+            t.setDaemon(true);
+            return t;
+        });
+        Path dir = watchedFile.getParentFile().toPath();
+        dir.register(watchService,
+                     StandardWatchEventKinds.ENTRY_MODIFY,
+                     StandardWatchEventKinds.ENTRY_DELETE,
+                     StandardWatchEventKinds.ENTRY_CREATE);
+        running = true;
+        watchThread = new Thread(this::watchLoop, "FileWatcher-" + watchedFile.getName());
+        watchThread.setDaemon(true);
+        watchThread.start();
+        log.fine("FileWatcher started for: " + watchedFile.getAbsolutePath());
+    }
+
+    /**
+     * Stops watching the file and releases all associated resources.
+     * Safe to call even if the watcher was never started.
+     */
+    public void stop() {
+        running = false;
+        if (watchService != null) {
+            try {
+                watchService.close();
+            }
+            catch (IOException e) {
+                log.log(Level.WARNING, "Error closing WatchService for: " + watchedFile.getAbsolutePath(), e);
+            }
+        }
+        if (debouncer != null) {
+            debouncer.shutdownNow();
+        }
+        if (watchThread != null) {
+            watchThread.interrupt();
+        }
+        log.fine("FileWatcher stopped for: " + watchedFile.getAbsolutePath());
+    }
+
+    /**
+     * Suppresses the next change event(s) for a short window after a self-initiated write.
+     * Call this immediately after the application writes to the watched file itself, to
+     * prevent the resulting WatchService event from being delivered to the callback.
+     * Any already-pending debounced event is also cancelled.
+     */
+    public void ignoreSelfTriggeredChanges() {
+        suppressUntil = System.currentTimeMillis() + SUPPRESS_DURATION_MS;
+        ScheduledFuture<?> pending = pendingEvent;
+        if (pending != null) {
+            pending.cancel(false);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Internal implementation
+    // -------------------------------------------------------------------------
+
+    private void watchLoop() {
+        while (running) {
+            WatchKey key;
+            try {
+                key = watchService.take();
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            catch (ClosedWatchServiceException e) {
+                break;
+            }
+
+            for (WatchEvent<?> event : key.pollEvents()) {
+                WatchEvent.Kind<?> kind = event.kind();
+                if (kind == StandardWatchEventKinds.OVERFLOW) {
+                    continue;
+                }
+
+                @SuppressWarnings("unchecked")
+                WatchEvent<Path> pathEvent = (WatchEvent<Path>) event;
+                Path changedPath = ((Path) key.watchable()).resolve(pathEvent.context());
+
+                if (changedPath.toAbsolutePath().equals(watchedFile.toPath().toAbsolutePath())) {
+                    scheduleDebounced();
+                }
+            }
+
+            if (!key.reset()) {
+                break;
+            }
+        }
+    }
+
+    private void scheduleDebounced() {
+        ScheduledFuture<?> pending = pendingEvent;
+        if (pending != null) {
+            pending.cancel(false);
+        }
+        pendingEvent = debouncer.schedule(() -> {
+            if (System.currentTimeMillis() >= suppressUntil) {
+                onChange.run();
+            }
+        }, DEBOUNCE_DELAY_MS, TimeUnit.MILLISECONDS);
+    }
+}
