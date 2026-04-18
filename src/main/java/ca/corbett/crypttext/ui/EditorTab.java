@@ -561,7 +561,15 @@ public class EditorTab extends JPanel implements UIReloadable {
                 markClean(); // clear dirty flag so closeTab() won't prompt for save
                 close();
                 // Now open a new tab with the updated disk contents:
-                pane.newTextTab(sourceFile);
+                try {
+                    pane.newTextTab(sourceFile);
+                }
+                catch (IllegalArgumentException e) {
+                    getMessageUtil().error("Error reloading file: " + e.getMessage(), e);
+                }
+                catch (Exception e) {
+                    getMessageUtil().error("Error reloading file: " + e.getMessage(), e);
+                }
             }
         }
     }
