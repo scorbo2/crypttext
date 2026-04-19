@@ -35,7 +35,7 @@ import java.util.logging.Logger;
  * The watcher runs on dedicated daemon threads and never blocks the Swing EDT.
  * The supplied callback is invoked directly on the debouncer thread; callers
  * that need to update Swing components should wrap their callback with
- * {@link SwingUtilities#invokeLater}.
+ * {@link javax.swing.SwingUtilities#invokeLater}.
  * </p>
  * <p>
  * Self-triggered events (events caused by the application saving the file
