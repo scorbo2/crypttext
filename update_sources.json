@@ -1,0 +1,18 @@
+{
+  "applicationName": "CryptText",
+  "updateSources": [
+    {
+      "name": "local filesystem",
+      "baseUrl": "file:${user.home}/Software/sc-releases/apps-dist/CryptText",
+      "versionManifest": "version_manifest.json",
+      "publicKey": "public.key"
+    },
+    {
+      "name": "www.corbett.ca",
+      "baseUrl": "http://www.corbett.ca/apps/CryptText",
+      "versionManifest": "version_manifest.json",
+      "publicKey": "public.key"
+    }
+  ],
+  "isAllowSnapshots": false
+}
