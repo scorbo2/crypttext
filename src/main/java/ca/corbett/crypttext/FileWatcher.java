@@ -178,40 +178,62 @@ public class FileWatcher {
 
     private void watchLoop() {
         while (running) {
-            WatchKey key;
-            try {
-                key = watchService.take();
-            }
-            catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
-            catch (ClosedWatchServiceException e) {
-                break;
-            }
-
-            for (WatchEvent<?> event : key.pollEvents()) {
-                WatchEvent.Kind<?> kind = event.kind();
-                if (kind == StandardWatchEventKinds.OVERFLOW) {
-                    scheduleDebounced();
-                    continue;
+        try {
+            while (running) {
+                WatchKey key;
+                try {
+                    key = watchService.take();
+                }
+                catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+                catch (ClosedWatchServiceException e) {
+                    break;
                 }
 
-                @SuppressWarnings("unchecked")
-                WatchEvent<Path> pathEvent = (WatchEvent<Path>) event;
-                Path changedPath = ((Path) key.watchable()).resolve(pathEvent.context());
+                for (WatchEvent<?> event : key.pollEvents()) {
+                    WatchEvent.Kind<?> kind = event.kind();
+                    if (kind == StandardWatchEventKinds.OVERFLOW) {
+                        continue;
+                    }
 
-                if (changedPath.toAbsolutePath().equals(watchedFile.toPath().toAbsolutePath())) {
-                    scheduleDebounced();
+                    @SuppressWarnings("unchecked")
+                    WatchEvent<Path> pathEvent = (WatchEvent<Path>) event;
+                    Path changedPath = ((Path) key.watchable()).resolve(pathEvent.context());
+
+                    if (changedPath.toAbsolutePath().equals(watchedFile.toPath().toAbsolutePath())) {
+                        scheduleDebounced();
+                    }
+                }
+
+                if (!key.reset()) {
+                    break;
                 }
             }
-
-            if (!key.reset()) {
-                break;
-            }
+        }
+        finally {
+            cleanupAfterWatchLoopExit();
         }
     }
 
+    private void cleanupAfterWatchLoopExit() {
+        running = false;
+
+        ScheduledFuture<?> pending = pendingEvent.getAndSet(null);
+        if (pending != null) {
+            pending.cancel(false);
+        }
+
+        debouncer.shutdownNow();
+
+        try {
+            watchService.close();
+        }
+        catch (IOException | ClosedWatchServiceException ignored) {
+            // Already closed or no further cleanup possible.
+        }
+    }
     private void scheduleDebounced() {
         ScheduledFuture<?> old = pendingEvent.getAndSet(null);
         if (old != null) {
