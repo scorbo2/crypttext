@@ -10,6 +10,7 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -177,7 +178,6 @@ public class FileWatcher {
     // -------------------------------------------------------------------------
 
     private void watchLoop() {
-        while (running) {
         try {
             while (running) {
                 WatchKey key;
@@ -235,15 +235,23 @@ public class FileWatcher {
         }
     }
     private void scheduleDebounced() {
+        if (!running) {
+            return;
+        }
         ScheduledFuture<?> old = pendingEvent.getAndSet(null);
         if (old != null) {
             old.cancel(false);
         }
-        ScheduledFuture<?> next = debouncer.schedule(() -> {
-            if (running && System.currentTimeMillis() >= suppressUntil) {
-                onChange.run();
-            }
-        }, DEBOUNCE_DELAY_MS, TimeUnit.MILLISECONDS);
-        pendingEvent.set(next);
+        try {
+            ScheduledFuture<?> next = debouncer.schedule(() -> {
+                if (running && System.currentTimeMillis() >= suppressUntil) {
+                    onChange.run();
+                }
+            }, DEBOUNCE_DELAY_MS, TimeUnit.MILLISECONDS);
+            pendingEvent.set(next);
+        }
+        catch (RejectedExecutionException ignored) {
+            // Executor was shut down concurrently; nothing to schedule.
+        }
     }
 }
