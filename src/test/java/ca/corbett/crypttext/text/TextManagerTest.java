@@ -248,6 +248,31 @@ class TextManagerTest {
         assertEquals(0, textManager.size());
     }
 
+    @Test
+    void testFromFile_withBinaryFile_shouldThrowIOException() {
+        // GIVEN a file containing null bytes (obviously not a text file):
+        File binaryFile = tempDir.resolve("binary.dat").toFile();
+        try {
+            Files.write(binaryFile.toPath(), new byte[]{0, 1, 2, 3, 4});
+        }
+        catch (IOException e) {
+            fail("Failed to create binary test file: " + e.getMessage());
+        }
+
+        // WHEN we try to load it with fromFile:
+        try {
+            textManager.fromFile(binaryFile);
+            fail("Was expecting an IOException but didn't get one!");
+        }
+        catch (IOException e) {
+            // THEN we should get an IOException because the file is not valid text:
+            assertTrue(e.getMessage().contains("does not appear to be a text file"));
+        }
+        catch (VetoException ve) {
+            fail("Unexpected VetoException when loading binary file: " + ve.getMessage());
+        }
+    }
+
     // ==================== SaveText Tests ====================
 
     @Test

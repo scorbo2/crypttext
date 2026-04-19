@@ -1,18 +1,26 @@
 package ca.corbett.crypttext.crypt;
 
 import ca.corbett.crypttext.DecryptionFailedException;
+import ca.corbett.extras.io.FileSystemUtil;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Base64;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 class CryptUtilTest {
+
+    @TempDir
+    private File tempDir;
 
     // ------ Encryption tests ---------------
 
@@ -304,6 +312,97 @@ class CryptUtilTest {
         assertEquals(plaintext, decrypted);
     }
 
+    // --------- File-handling tests ----------------------
+
+    @Test
+    public void fileEncrypt_roundTrip_shouldSucceed() throws Exception {
+        // GIVEN valid input parameters:
+        String password = "mysecretpassword";
+        String plaintext = "This is a secret message.";
+        File outputFile = File.createTempFile("crypttest", ".txt", tempDir);
+
+        // WHEN we encryptAndWrap and write to file:
+        CryptUtil.encryptAndWrap(password, plaintext, outputFile);
+
+        // THEN the file should have been created and should have a nonzero size:
+        assertTrue(outputFile.exists(), "Output file should exist");
+        assertTrue(outputFile.length() > 0, "Output file should not be empty");
+
+        // AND our detection method should recognize it as a wrapped file:
+        assertTrue(CryptUtil.isCryptTextWrapped(outputFile));
+
+        // AND we should be able to read it back with unwrapAndDecrypt:
+        String actual = CryptUtil.unwrapAndDecrypt(password, outputFile);
+        assertEquals(plaintext, actual, "Decrypted content from file should match original plaintext");
+    }
+
+    @Test
+    public void unwrapAndDecrypt_withMissingFile_shouldThrow() {
+        // GIVEN a non-existent file:
+        String password = "password";
+        File missingFile = new File(tempDir, "nonexistent.txt");
+
+        // WHEN we attempt to unwrapAndDecrypt from the missing file, THEN we should get an IOException:
+        assertThrows(IOException.class, () -> CryptUtil.unwrapAndDecrypt(password, missingFile));
+    }
+
+    @Test
+    public void inPlaceOperations_roundTrip_shouldSucceed() throws Exception {
+        // GIVEN a file containing encrypted contents:
+        String password = "mysecretpassword";
+        String plaintext = "This is a secret message.";
+        File tempFile = File.createTempFile("crypttest", ".txt", tempDir);
+        FileSystemUtil.writeStringToFile(plaintext, tempFile);
+
+        // WHEN we encrypt it in-place:
+        CryptUtil.encryptInPlace(tempFile, password);
+
+        // THEN it should be recognized as a wrapped file:
+        assertTrue(CryptUtil.isCryptTextWrapped(tempFile));
+
+        // WHEN we then decrypt it in-place:
+        CryptUtil.decryptInPlace(tempFile, password);
+
+        // THEN we should get back the original plaintext:
+        String actual = FileSystemUtil.readFileToString(tempFile);
+        assertEquals(plaintext, actual, "Decrypted content from file should match original plaintext");
+    }
+
+    @Test
+    public void encryptInPlace_alreadyEncrypted_shouldDoNothing() throws Exception {
+        // GIVEN a file that is already encrypted:
+        String password = "mysecretpassword";
+        String plaintext = "This is a secret message.";
+        File tempFile = File.createTempFile("crypttest", ".txt", tempDir);
+        CryptUtil.encryptAndWrap(password, plaintext, tempFile);
+        long fileSizeBefore = tempFile.length();
+        long lastModifiedBefore = tempFile.lastModified();
+
+        // WHEN we try to encrypt it in place:
+        CryptUtil.encryptInPlace(tempFile, password);
+
+        // THEN nothing should happen:
+        assertEquals(fileSizeBefore, tempFile.length(), "File size should not change");
+        assertEquals(lastModifiedBefore, tempFile.lastModified(), "Last modified timestamp should not change");
+    }
+
+    @Test
+    public void decryptInPlace_notEncrypted_shouldDoNothing() throws Exception {
+        // GIVEN a file that is not encrypted:
+        String password = "mysecretpassword";
+        String plaintext = "This is a secret message.";
+        File tempFile = File.createTempFile("crypttest", ".txt", tempDir);
+        FileSystemUtil.writeStringToFile(plaintext, tempFile);
+        long fileSizeBefore = tempFile.length();
+        long lastModifiedBefore = tempFile.lastModified();
+
+        // WHEN we try to decrypt it in place:
+        CryptUtil.decryptInPlace(tempFile, password);
+
+        // THEN nothing should happen:
+        assertEquals(fileSizeBefore, tempFile.length(), "File size should not change");
+        assertEquals(lastModifiedBefore, tempFile.lastModified(), "Last modified timestamp should not change");
+    }
 
     /**
      * A quick utility method to check if a string is valid Base64-encoded data in Mime format.

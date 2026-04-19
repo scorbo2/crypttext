@@ -24,6 +24,8 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.DefaultCaret;
 import javax.swing.undo.UndoManager;
+import ca.corbett.crypttext.FileWatcher;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.io.File;
@@ -70,12 +72,24 @@ public class EditorTab extends JPanel implements UIReloadable {
 
     /**
      * Listeners can subscribe to receive notification when this tab is closed.
-     * Note that this event is not vetoable. Listeners are notified AFTER the
-     * tab is closed. This is informational.
+     * Note that this event is not vetoable. Listeners are notified during
+     * tab closure, immediately before dispose(). This is informational,
+     * and cannot be vetoed or canceled.
      */
     @FunctionalInterface
     public interface TabClosedListener {
         void onTabClosed(EditorTab tab);
+    }
+
+    /**
+     * Listeners can subscribe to receive notification when save() is successfully
+     * invoked on this tab. The supplied File is the file that was actually written to,
+     * which may differ from the source file if this tab was created from a scratch file,
+     * or if "save as" was used.
+     */
+    @FunctionalInterface
+    public interface TabSavedListener {
+        void onTabSaved(EditorTab tab, File savedFile);
     }
 
     private static final Logger log = Logger.getLogger(EditorTab.class.getName());
@@ -84,6 +98,7 @@ public class EditorTab extends JPanel implements UIReloadable {
     private final List<PositionListener> positionListeners;
     private final List<ContentChangeListener> contentChangeListeners;
     private final List<TabClosedListener> tabClosedListeners;
+    private final List<TabSavedListener> tabSavedListeners;
     private final EditorTabPane ownerPane;
     private final JTextPane textPane; // stores our memoryContents
     private final JScrollPane scrollPane;
@@ -97,6 +112,7 @@ public class EditorTab extends JPanel implements UIReloadable {
     private boolean isDirty;
     private boolean eventsEnabled = true; // used to prevent firing events during programmatic text changes
     private String cleanContents; // snapshot of memory contents at the last markClean() – used for undo/redo dirty tracking
+    private FileWatcher fileWatcher; // watches the source file for external changes; null for scratch files
 
     /**
      * Creates a new, empty editor tab with the given name.
@@ -118,6 +134,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         this.positionListeners = new CopyOnWriteArrayList<>();
         this.contentChangeListeners = new CopyOnWriteArrayList<>();
         this.tabClosedListeners = new CopyOnWriteArrayList<>();
+        this.tabSavedListeners = new CopyOnWriteArrayList<>();
         this.ownerPane = ownerPane;
         this.name = name;
         textPane = new JTextPane();
@@ -145,6 +162,7 @@ public class EditorTab extends JPanel implements UIReloadable {
         MainWindow.configureDropTarget(textPane, getMessageUtil());
         UIReloadAction.getInstance().registerReloadable(this);
         reloadUI(); // force an immediate update to pick up the correct theme and color scheme
+        startFileWatcher();
     }
 
     /**
@@ -269,11 +287,11 @@ public class EditorTab extends JPanel implements UIReloadable {
      */
     public void close() {
         if (ownerPane.closeTab(this)) {
-            // Our request to close the tab was not canceled or vetoed, so we are actually closing:
-            dispose();
-
             // Notify listeners:
             fireTabClosedEvent();
+
+            // Our request to close the tab was not canceled or vetoed, so we are actually closing:
+            dispose();
         }
     }
 
@@ -284,6 +302,11 @@ public class EditorTab extends JPanel implements UIReloadable {
         UIReloadAction.getInstance().unregisterReloadable(this); // stop listening
         undoableEditListener.flush(); // commit any pending group and stop the timer
         textPane.getDocument().removeUndoableEditListener(undoableEditListener);
+        positionListeners.clear();
+        contentChangeListeners.clear();
+        tabClosedListeners.clear();
+        tabSavedListeners.clear();
+        stopFileWatcher();
     }
 
     /**
@@ -324,6 +347,9 @@ public class EditorTab extends JPanel implements UIReloadable {
 
         // Now we can try to save the encrypted text to disk, without changing our in-memory contents:
         // This will throw a VetoException if any extension vetoes the save, or possibly an IOException:
+        if (fileWatcher != null) {
+            fileWatcher.ignoreSelfTriggeredChanges();
+        }
         diskContents = ownerPane.getTextManager().saveText(diskContents, textToSave.getText());
 
         // Update our CryptMetadata, which may have changed above:
@@ -336,6 +362,8 @@ public class EditorTab extends JPanel implements UIReloadable {
         // but it makes sense when you consider the above flow: the in-memory contents were
         // successfully encrypted and saved to disk.
         markClean();
+
+        fireTabSavedEvent(diskContents.getSourceFile());
     }
 
     /**
@@ -378,6 +406,9 @@ public class EditorTab extends JPanel implements UIReloadable {
                 // If we were a scratch file, we now have an actual name.
                 // If we weren't a scratch file, our name has likely changed.
                 setTabName(newFile.getName());
+
+                restartFileWatcher();
+                fireTabSavedEvent(diskContents.getSourceFile());
             }
             catch (VetoException ignored) {
                 // Save was vetoed by an extension!
@@ -436,6 +467,9 @@ public class EditorTab extends JPanel implements UIReloadable {
 
                 // Overwrite any CryptMetadata we had and immediately forget our password:
                 setCryptMetadata(new DefaultCryptMetadata(false));
+
+                restartFileWatcher();
+                fireTabSavedEvent(diskContents.getSourceFile());
             }
             catch (VetoException ignored) {
                 // Save was vetoed by an extension!
@@ -450,6 +484,110 @@ public class EditorTab extends JPanel implements UIReloadable {
                     markDirty();
                     getMessageUtil().warning("Save vetoed",
                                              "The save was vetoed by an extension. Note: your tab is now showing decrypted content.");
+                }
+            }
+        }
+    }
+
+    /**
+     * Invoked when the application detects that the source file on disk has been
+     * modified or deleted while this editor tab is open. Presents the user with
+     * a question dialog offering options for how to handle the situation.
+     * If the user cancels the dialog without choosing an option, the default
+     * action is "Ignore" (mark the tab as dirty and do nothing further).
+     * The "Reload" option is only shown if the source file still exists on disk.
+     */
+    public void diskContentsChanged() {
+        File sourceFile = diskContents.getSourceFile();
+        boolean fileStillExists = sourceFile.exists();
+
+        // Build the list of options - "Reload" is only shown if the file still exists:
+        String[] options;
+        if (fileStillExists) {
+            options = new String[]{
+                    "Save (overwrite disk contents with editor contents)",
+                    "Save as",
+                    "Ignore (contents will be out of sync with disk!)",
+                    "Close without saving",
+                    "Reload"
+            };
+        }
+        else {
+            options = new String[]{
+                    "Save (overwrite disk contents with editor contents)",
+                    "Save as",
+                    "Ignore (contents will be out of sync with disk!)",
+                    "Close without saving"
+            };
+        }
+
+        String choice = getMessageUtil().askSelect(
+                "Disk contents changed",
+                "The contents on disk have been modified or deleted.\nWhat would you like to do?",
+                options,
+                "Ignore (contents will be out of sync with disk!)"
+        );
+
+        // Default action on cancel (null return) is "Ignore":
+        if (choice == null || choice.equals("Ignore (contents will be out of sync with disk!)")) {
+            markDirty();
+            return;
+        }
+
+        switch (choice) {
+            case "Save (overwrite disk contents with editor contents)" -> {
+                try {
+                    save();
+                }
+                catch (VetoException ignored) {
+                    // An extension vetoed the save - mark dirty so the user knows a save is still needed.
+                    markDirty();
+                }
+                catch (Exception e) {
+                    markDirty();
+                    getMessageUtil().error("Error saving file: " + e.getMessage(), e);
+                }
+            }
+            case "Save as" -> {
+                try {
+                    saveAs();
+                }
+                catch (Exception e) {
+                    markDirty();
+                    getMessageUtil().error("Error saving file: " + e.getMessage(), e);
+                }
+            }
+            case "Close without saving" -> {
+                boolean wasDirty = isDirty();
+                markClean(); // clear dirty flag so closeTab() won't prompt for save
+                close();
+                if (getParent() != null && wasDirty) {
+                    // The close was canceled (for example by a scratch-tab prompt), so restore the original state.
+                    markDirty();
+                }
+            }
+            case "Reload" -> {
+                // Capture references before closing, as dispose() will clean up state:
+                EditorTabPane pane = ownerPane;
+                boolean wasDirty = isDirty();
+                markClean(); // clear dirty flag so closeTab() won't prompt for save
+                close();
+                if (getParent() != null) {
+                    // The tab did not close, so do not continue with reload.
+                    if (wasDirty) {
+                        markDirty();
+                    }
+                    return;
+                }
+                // Now open a new tab with the updated disk contents:
+                try {
+                    pane.newTextTab(sourceFile);
+                }
+                catch (IllegalArgumentException e) {
+                    getMessageUtil().error("Error reloading file: " + e.getMessage(), e);
+                }
+                catch (Exception e) {
+                    getMessageUtil().error("Error reloading file: " + e.getMessage(), e);
                 }
             }
         }
@@ -972,6 +1110,39 @@ public class EditorTab extends JPanel implements UIReloadable {
         }
     }
 
+    public void addTabSavedListener(TabSavedListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener cannot be null");
+        }
+        tabSavedListeners.add(listener);
+    }
+
+    public void removeTabSavedListener(TabSavedListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener cannot be null");
+        }
+        tabSavedListeners.remove(listener);
+    }
+
+    private void fireTabSavedEvent(File saveFile) {
+        // If no one is listening, don't bother:
+        if (tabSavedListeners.isEmpty()) {
+            return;
+        }
+
+        // Notify listeners:
+        try {
+            // Iterate over a copy of the list to avoid ConcurrentModificationExceptions:
+            for (TabSavedListener listener : new ArrayList<>(tabSavedListeners)) {
+                listener.onTabSaved(this, saveFile);
+            }
+        }
+        catch (Exception e) {
+            // If a listener throws a runtime exception, don't let it interfere with this EditorTab:
+            log.warning("Failed to fire tab saved event: " + e.getMessage());
+        }
+    }
+
     /**
      * A very simple DocumentListener that will mark this editor tab as dirty
      * whenever any change is made.
@@ -1011,4 +1182,47 @@ public class EditorTab extends JPanel implements UIReloadable {
         }
         return messageUtil;
     }
+
+    /**
+     * Starts the FileWatcher for the current source file, if the file is not a scratch file.
+     * Silently does nothing if the file watcher cannot be started for any reason.
+     */
+    private void startFileWatcher() {
+        if (isScratchFile()) {
+            return; // scratch files have no meaningful location to watch
+        }
+        File sourceFile = diskContents.getSourceFile();
+        if (sourceFile.getParentFile() == null) {
+            return; // no parent directory to watch
+        }
+        try {
+            fileWatcher = new FileWatcher(sourceFile,
+                                          () -> SwingUtilities.invokeLater(this::diskContentsChanged));
+            fileWatcher.start();
+        }
+        catch (IOException e) {
+            log.warning("Could not start file watcher for " + sourceFile.getAbsolutePath() + ": " + e.getMessage());
+            fileWatcher = null;
+        }
+    }
+
+    /**
+     * Stops the current FileWatcher if one is running, and sets it to null.
+     */
+    private void stopFileWatcher() {
+        if (fileWatcher != null) {
+            fileWatcher.stop();
+            fileWatcher = null;
+        }
+    }
+
+    /**
+     * Stops the current FileWatcher and starts a new one for the current source file.
+     * Used after a "save as" or "save unencrypted" operation changes the source file.
+     */
+    private void restartFileWatcher() {
+        stopFileWatcher();
+        startFileWatcher();
+    }
 }
+

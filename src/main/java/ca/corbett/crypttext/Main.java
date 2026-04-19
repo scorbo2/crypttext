@@ -2,6 +2,7 @@ package ca.corbett.crypttext;
 
 import ca.corbett.crypttext.extensions.CryptTextExtensionManager;
 import ca.corbett.crypttext.ui.MainWindow;
+import ca.corbett.extras.FallbackExceptionHandler;
 import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.SingleInstanceManager;
 import ca.corbett.updates.UpdateManager;
@@ -32,6 +33,9 @@ public class Main {
     public static void main(String[] args) {
         // Before we do anything else, set up logging:
         configureLogging();
+
+        // Set up a fallback exception handler so that uncaught exceptions get logged properly:
+        FallbackExceptionHandler.register();
 
         // Peek at our config file to see if single instance mode is enabled:
         boolean isSingleInstanceEnabled = Boolean.parseBoolean(AppConfig.peek(AppConfig.SINGLE_INSTANCE_PROP));

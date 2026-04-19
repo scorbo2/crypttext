@@ -10,7 +10,7 @@
 FORMAT="tarball"
 
 APPLICATION="CryptText"
-VERSION="1.1"
+VERSION="1.2"
 
 CATEGORY="TextEditor"
 
@@ -26,7 +26,7 @@ OUTPUT_DIR=target
 TO_COPY="target/lib"
 TO_COPY="${TO_COPY} src/main/resources/ca/corbett/crypttext/ReleaseNotes.txt"
 
-# TODO CryptText v1 has no external application extensions yet... uncomment this later
-#TO_COPY="${TO_COPY} update_sources.json"
+# Allow dynamic discovery of application extensions and new versions:
+TO_COPY="${TO_COPY} update_sources.json"
 
 TO_COPY="${TO_COPY} src/main/resources/ca/corbett/crypttext/images/logo.png"

@@ -14,7 +14,7 @@ public class Version {
     private static final AboutInfo aboutInfo;
 
     public static String NAME = "CryptText";
-    public static String VERSION = "1.1";
+    public static String VERSION = "1.2";
     public static String FULL_NAME = NAME + " " + VERSION;
     public static String COPYRIGHT = "Copyright © 2026 Steve Corbett";
     public static String PROJECT_URL = "https://github.com/scorbo2/crypttext";

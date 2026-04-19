@@ -164,7 +164,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
      * Our actual status bar component.
      */
     private static class StatusBarComponent extends JPanel
-            implements EditorTab.PositionListener, EditorTab.ContentChangeListener {
+            implements EditorTab.PositionListener, EditorTab.ContentChangeListener, EditorTab.TabSavedListener {
         private static final String DEFAULT_POS = "Ln 1, Col 1";
         private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
 
@@ -231,7 +231,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
         /**
          * Updates our label content based on the given EditorTab.
          * Passing null is perfectly valid here, it means "no tab is currently selected".
-         * In that case, we'll blank our our labels.
+         * In that case, we'll blank out our labels.
          */
         public void setLabels(EditorTab tab) {
             if (tab == null) {
@@ -322,6 +322,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
             if (currentTab != null) {
                 currentTab.removePositionListener(this);
                 currentTab.removeContentChangeListener(this);
+                currentTab.removeTabSavedListener(this);
             }
 
             // It's possible that the tab pane might contain Components that are not EditorTabs.
@@ -330,6 +331,7 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
                 currentTab = editorTab;
                 currentTab.addPositionListener(this);
                 currentTab.addContentChangeListener(this);
+                currentTab.addTabSavedListener(this);
             }
             else {
                 currentTab = null;
@@ -364,6 +366,14 @@ public class StatusBarExtension extends CryptTextExtension implements ChangeList
         @Override
         public void onContentChange(String newContent) {
             updateTextStatsLabel(newContent);
+        }
+
+        @Override
+        public void onTabSaved(EditorTab tab, File savedFile) {
+            // If the currently selected tab was just saved, we need to update our file info labels, since the file on disk may have changed:
+            if (tab == currentTab) {
+                setLabels(currentTab);
+            }
         }
     }
 
