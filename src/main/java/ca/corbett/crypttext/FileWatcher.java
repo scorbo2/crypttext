@@ -14,6 +14,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,7 +40,9 @@ import java.util.logging.Logger;
  * <p>
  * Self-triggered events (events caused by the application saving the file
  * itself) can be suppressed by calling {@link #ignoreSelfTriggeredChanges()}
- * immediately after a self-initiated write.
+ * immediately <em>before</em> initiating the write operation, so that the
+ * suppression window is guaranteed to be in effect before the WatchService
+ * event arrives.
  * </p>
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
@@ -59,7 +62,7 @@ public class FileWatcher {
 
     private WatchService watchService;
     private ScheduledExecutorService debouncer;
-    private volatile ScheduledFuture<?> pendingEvent;
+    private final AtomicReference<ScheduledFuture<?>> pendingEvent = new AtomicReference<>();
     private volatile Thread watchThread;
     private volatile boolean running;
     private volatile long suppressUntil = 0;
@@ -98,22 +101,35 @@ public class FileWatcher {
         if (running) {
             return;
         }
-        watchService = FileSystems.getDefault().newWatchService();
-        debouncer = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "FileWatcher-debouncer-" + watchedFile.getName());
-            t.setDaemon(true);
-            return t;
-        });
-        Path dir = watchedFile.getParentFile().toPath();
-        dir.register(watchService,
-                     StandardWatchEventKinds.ENTRY_MODIFY,
-                     StandardWatchEventKinds.ENTRY_DELETE,
-                     StandardWatchEventKinds.ENTRY_CREATE);
-        running = true;
-        watchThread = new Thread(this::watchLoop, "FileWatcher-" + watchedFile.getName());
-        watchThread.setDaemon(true);
-        watchThread.start();
-        log.fine("FileWatcher started for: " + watchedFile.getAbsolutePath());
+        try {
+            watchService = FileSystems.getDefault().newWatchService();
+            debouncer = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "FileWatcher-debouncer-" + watchedFile.getName());
+                t.setDaemon(true);
+                return t;
+            });
+            Path dir = watchedFile.getParentFile().toPath();
+            dir.register(watchService,
+                         StandardWatchEventKinds.ENTRY_MODIFY,
+                         StandardWatchEventKinds.ENTRY_DELETE,
+                         StandardWatchEventKinds.ENTRY_CREATE);
+            running = true;
+            watchThread = new Thread(this::watchLoop, "FileWatcher-" + watchedFile.getName());
+            watchThread.setDaemon(true);
+            watchThread.start();
+            log.fine("FileWatcher started for: " + watchedFile.getAbsolutePath());
+        }
+        catch (IOException e) {
+            stop(); // clean up any partially-initialized resources
+            throw e;
+        }
+    }
+
+    /**
+     * Returns true if this watcher is currently active.
+     */
+    public boolean isRunning() {
+        return running;
     }
 
     /**
@@ -122,6 +138,10 @@ public class FileWatcher {
      */
     public void stop() {
         running = false;
+        ScheduledFuture<?> pending = pendingEvent.getAndSet(null);
+        if (pending != null) {
+            pending.cancel(false);
+        }
         if (watchService != null) {
             try {
                 watchService.close();
@@ -141,13 +161,13 @@ public class FileWatcher {
 
     /**
      * Suppresses the next change event(s) for a short window after a self-initiated write.
-     * Call this immediately after the application writes to the watched file itself, to
-     * prevent the resulting WatchService event from being delivered to the callback.
+     * Call this immediately <em>before</em> initiating the write operation, so that the
+     * suppression window is guaranteed to be in effect before the WatchService event arrives.
      * Any already-pending debounced event is also cancelled.
      */
     public void ignoreSelfTriggeredChanges() {
         suppressUntil = System.currentTimeMillis() + SUPPRESS_DURATION_MS;
-        ScheduledFuture<?> pending = pendingEvent;
+        ScheduledFuture<?> pending = pendingEvent.getAndSet(null);
         if (pending != null) {
             pending.cancel(false);
         }
@@ -193,14 +213,15 @@ public class FileWatcher {
     }
 
     private void scheduleDebounced() {
-        ScheduledFuture<?> pending = pendingEvent;
-        if (pending != null) {
-            pending.cancel(false);
+        ScheduledFuture<?> old = pendingEvent.getAndSet(null);
+        if (old != null) {
+            old.cancel(false);
         }
-        pendingEvent = debouncer.schedule(() -> {
-            if (System.currentTimeMillis() >= suppressUntil) {
+        ScheduledFuture<?> next = debouncer.schedule(() -> {
+            if (running && System.currentTimeMillis() >= suppressUntil) {
                 onChange.run();
             }
         }, DEBOUNCE_DELAY_MS, TimeUnit.MILLISECONDS);
+        pendingEvent.set(next);
     }
 }

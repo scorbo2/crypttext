@@ -347,6 +347,9 @@ public class EditorTab extends JPanel implements UIReloadable {
 
         // Now we can try to save the encrypted text to disk, without changing our in-memory contents:
         // This will throw a VetoException if any extension vetoes the save, or possibly an IOException:
+        if (fileWatcher != null) {
+            fileWatcher.ignoreSelfTriggeredChanges();
+        }
         diskContents = ownerPane.getTextManager().saveText(diskContents, textToSave.getText());
 
         // Update our CryptMetadata, which may have changed above:
@@ -361,9 +364,6 @@ public class EditorTab extends JPanel implements UIReloadable {
         markClean();
 
         fireTabSavedEvent(diskContents.getSourceFile());
-        if (fileWatcher != null) {
-            fileWatcher.ignoreSelfTriggeredChanges();
-        }
     }
 
     /**
