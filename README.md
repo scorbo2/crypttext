@@ -6,6 +6,12 @@ CryptText is a user-friendly, extensible text editor with built-in encryption an
 Users can protect text files with a password without needing to know or care about the
 underlying cryptography details.
 
+Highlights in the 1.2 release include:
+
+- A new "file watcher" feature for detecting external changes on disk while a file is open
+- Dynamic application extension discovery and installation is now enabled!
+- A couple of minor bug fixes and improvements to the extension mechanism
+
 Highlights in the 1.1 release include:
 
 - Undo/redo support with configurable history depth
@@ -23,10 +29,9 @@ Highlights in the 1.1 release include:
 
 If you are running on Linux, and have Java 17 or higher installed, you can download the installer tarball:
 
-- [CryptText Installer](https://www.corbett.ca/apps/CryptText-1.1.tar.gz)
+- [CryptText Installer](https://www.corbett.ca/apps/CryptText-1.2.tar.gz)
 - Size: 17MB
-- Sha256: `d5aa6243dd0c444f319d4b94ed2aac7a2d96b041220bf411f8e8b22eb25e5631`
-- TODO update download info for 1.2 release
+- Sha256: `dfdde1336f41b0bdf79c708757ff7d9e28f1da07ca95e42220fed719a825c54a`
 
 This is the best option, as you get an installer script that sets everything up for you:
 
@@ -69,7 +74,7 @@ CryptText validates that dropped items are text files before opening them.
 
 ### Undo, redo, and font size shortcuts
 
-CryptText 1.1 adds per-tab undo/redo support. By default, `Ctrl+Z` undoes the last change and `Ctrl+Y`
+CryptText 1.1 added per-tab undo/redo support. By default, `Ctrl+Z` undoes the last change and `Ctrl+Y`
 redoes it.
 
 You can also adjust the editor font size on the fly with `Ctrl+Equals` and `Ctrl+Minus`. These changes
@@ -106,6 +111,27 @@ You will be prompted for confirmation before proceeding:
 If you have decrypted a file and wish to clear the remembered password (for example, before stepping away from your
 desk), you can select "Forget Password" from the Crypt menu, or press F7 (by default). This clears the cached
 password so that the next decrypt or encrypt operation will prompt for it again.
+
+### External change detection
+
+Version `1.2` added a file watcher feature that detects when an open file has been modified on disk
+by another application. When this happens, you will see a notification in the editor tab, and you can choose
+what to do in response:
+
+![External change notification](src/main/resources/ca/corbett/crypttext/screenshots/external_change.png)
+
+Your options:
+
+- Save: this will overwrite the modified disk contents with the current in-memory contents.
+- Save as: this will allow you to save the in-memory contents to a new file, preserving the externally modified file on
+  disk.
+- Ignore: this will leave the current editor tab as-is. The tab will be marked as unsaved (with an asterisk in the
+  title) to indicate that the in-memory contents are different from the disk contents. You can then choose to save or
+  discard changes as you normally would.
+- Close without saving: this will discard the in-memory contents and close the current tab. The externally modified file
+  will remain on disk with its changes intact.
+- Reload: this option only appears if the file on disk still exists (it may have been moved or deleted). Selecting this
+  option will discard the in-memory contents and reload the file from disk, including the external modifications.
 
 ### Configuration options
 

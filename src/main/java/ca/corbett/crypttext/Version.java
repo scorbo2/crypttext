@@ -74,7 +74,7 @@ public class Version {
         // This AboutInfo will be used to build the AboutDialog.
         aboutInfo = new AboutInfo();
         aboutInfo.applicationName = NAME;
-        aboutInfo.applicationVersion = VERSION + "-SNAPSHOT"; // TODO remove SNAPSHOT before release
+        aboutInfo.applicationVersion = VERSION;
         aboutInfo.copyright = COPYRIGHT;
         aboutInfo.license = LICENSE;
         aboutInfo.projectUrl = PROJECT_URL;

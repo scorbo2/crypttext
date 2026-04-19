@@ -22,6 +22,7 @@ This guide provides comprehensive information about the CryptText project struct
   - Recent files list
   - Single-instance mode option
   - Encryption metadata tracking
+  - Automatic detection of external file changes via `FileWatcher`
 
 ## 2. Project Structure
 
@@ -37,6 +38,7 @@ crypttext/
 │   │   ├── Main.java            # Application entry point
 │   │   ├── Version.java         # Version and directory info
 │   │   ├── AppConfig.java       # Centralized configuration manager
+│   │   ├── FileWatcher.java     # Watches a single file for external changes
 │   │   ├── RecentFilesManager.java
 │   │   ├── CryptTextResourceLoader.java
 │   │   ├── DecryptionFailedException.java
@@ -103,6 +105,7 @@ crypttext/
 │   │   ├── images/
 │   │   └── screenshots/
 │   └── test/java/ca/corbett/crypttext/
+│       ├── FileWatcherTest.java
 │       ├── RecentFilesManagerTest.java
 │       ├── crypt/CryptUtilTest.java
 │       └── text/TextManagerTest.java
@@ -130,7 +133,7 @@ mvn test -Dtest=CryptUtilTest  # Run specific test
 ### Core Dependencies
 - **Java 17** - Language and runtime
 - **Swing** - GUI framework (bundled with Java)
-- **swing-extras 2.8.0** - Custom Swing components and utilities
+- **swing-extras 2.9.0** - Custom Swing components and utilities
 - **Bouncy Castle (bcprov-jdk18on 1.83)** - Cryptography provider
 
 ### Testing Dependencies
@@ -190,6 +193,12 @@ Plugin architecture:
   - Extends swing-extras AppProperties
   - Manages user settings, keyboard shortcuts, UI actions
   - Integrates with CryptTextExtensionManager
+- **FileWatcher**: Watches a single file on disk for external modifications, deletions, or creation
+    - Uses Java NIO `WatchService` to monitor the file's parent directory
+    - Debounces rapid bursts of events into a single callback
+    - Supports suppression of self-triggered events via `ignoreSelfTriggeredChanges()`
+    - Runs on dedicated daemon threads; never blocks the Swing EDT
+    - Used by `EditorTab` to detect when the file backing an open tab is changed externally
 - **RecentFilesManager**: Recently-opened files list
 - **DecryptionFailedException**: Custom exception for decryption failures
 - **VetoException**: Extension veto signaling mechanism
@@ -203,19 +212,20 @@ Plugin architecture:
 | **MainWindow**                | Main application frame, coordinates UI, file I/O          |
 | **AppConfig**                 | All user settings, keystroke bindings, action creation    |
 | **TextManager**               | Text loading/saving, listener dispatch, scratch directory |
+| **FileWatcher**               | Monitors a file on disk for external changes              |
 | **CryptTextExtensionManager** | Extension lifecycle, hook invocation                      |
 | **RecentFilesManager**        | Recent files list persistence                             |
 
 ### UI Components
 
-| Class                | Responsibility                                                      |
-|----------------------|---------------------------------------------------------------------|
-| **EditorTab**        | Single editor tab with text pane, grouped undo/redo, dirty tracking |
-| **EditorTabPane**    | Container for editor tabs                                           |
-| **MenuManager**      | Main menu bar construction                                          |
-| **LineNumberGutter** | Line numbers display plus click/drag line selection                 |
-| **BlockCursor**      | Block-style caret with configurable blink behavior                  |
-| **ColorTheme**       | Editor color scheme                                                 |
+| Class                | Responsibility                                                                       |
+|----------------------|--------------------------------------------------------------------------------------|
+| **EditorTab**        | Single editor tab with text pane, grouped undo/redo, dirty tracking, and FileWatcher |
+| **EditorTabPane**    | Container for editor tabs                                                            |
+| **MenuManager**      | Main menu bar construction                                                           |
+| **LineNumberGutter** | Line numbers display plus click/drag line selection                                  |
+| **BlockCursor**      | Block-style caret with configurable blink behavior                                   |
+| **ColorTheme**       | Editor color scheme                                                                  |
 
 ### Action Classes
 
@@ -245,6 +255,7 @@ Plugin architecture:
 Tests follow Maven standard:
 ```
 src/test/java/ca/corbett/crypttext/
+├── FileWatcherTest.java
 ├── RecentFilesManagerTest.java
 ├── crypt/CryptUtilTest.java
 └── text/TextManagerTest.java
@@ -273,6 +284,7 @@ void testExample() {
 1. **CryptUtilTest** - Encryption/decryption edge cases
 2. **TextManagerTest** - Text loading/saving lifecycle
 3. **RecentFilesManagerTest** - Recent files persistence
+4. **FileWatcherTest** - File change detection, debounce, and self-trigger suppression
 
 ## 8. Extension System
 
@@ -420,8 +432,8 @@ To add CI/CD, create:
 public class Version {
     // Application Info
     public static String NAME = "CryptText";
-    public static String VERSION = "1.1";
-    public static String FULL_NAME = "CryptText 1.1";
+    public static String VERSION = "1.2";
+    public static String FULL_NAME = "CryptText 1.2";
     public static String COPYRIGHT = "Copyright © 2026 Steve Corbett";
     public static String PROJECT_URL = "https://github.com/scorbo2/crypttext";
     public static String LICENSE = "https://opensource.org/license/mit";
@@ -490,6 +502,9 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
 - Look & Feel changes require LAF switch + UI reload
 - MainWindow and each EditorTab are configured as OS drag-and-drop targets for opening text files
 - EditorTab resets the caret to the top after loading content and re-syncs dirty state after undo/redo
+- Each EditorTab owns a `FileWatcher` instance that monitors its backing file for external changes; scratch (unsaved)
+  tabs have no watcher. `ignoreSelfTriggeredChanges()` is called before any application-initiated save to avoid spurious
+  reload prompts.
 
 ### Encryption
 - Passwords are memory-sensitive
@@ -523,7 +538,8 @@ public class AppConfig extends AppProperties<CryptTextExtension> {
 mvn clean package                           # Build project
 mvn test                                    # Run all tests
 mvn test -Dtest=CryptUtilTest              # Run specific test
-mvn clean package && java -jar target/crypttext-1.1.jar  # Build & run from current pom.xml
+mvn test -Dtest=FileWatcherTest            # Run FileWatcher tests
+mvn clean package && java -jar target/crypttext-1.2.jar  # Build & run from current pom.xml
 find src -name "*.java" | xargs wc -l      # Count lines of code
 ```
 
@@ -531,7 +547,7 @@ find src -name "*.java" | xargs wc -l      # Count lines of code
 
 - **Total Lines of Code**: ~8,298 in `src/main/java`
 - **Java Version**: 17
-- **Test Classes**: 3 (CryptUtilTest, TextManagerTest, RecentFilesManagerTest)
+- **Test Classes**: 4 (CryptUtilTest, TextManagerTest, RecentFilesManagerTest, FileWatcherTest)
 - **Main Packages**: 8
 - **Built-in Extensions**: 4 (DirTree, StatusBar, Immersive Mode, Test)
 
