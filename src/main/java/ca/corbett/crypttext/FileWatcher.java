@@ -193,6 +193,7 @@ public class FileWatcher {
             for (WatchEvent<?> event : key.pollEvents()) {
                 WatchEvent.Kind<?> kind = event.kind();
                 if (kind == StandardWatchEventKinds.OVERFLOW) {
+                    scheduleDebounced();
                     continue;
                 }
 
