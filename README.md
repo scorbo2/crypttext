@@ -35,8 +35,8 @@ Highlights in the 1.1 release include:
 If you are running on Linux, and have Java 17 or higher installed, you can download the installer tarball:
 
 - [CryptText Installer](https://www.corbett.ca/apps/CryptText-1.3.tar.gz)
-- Size: TODO
-- Sha256: `TODO`
+- Size: 16MB
+- Sha256: `c7f1abdde003c59b21a5330c1affa1df6854d1e345670c64e2c6c33301b4bc41`
 
 This is the best option, as you get an installer script that sets everything up for you:
 
