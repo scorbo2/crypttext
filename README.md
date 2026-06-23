@@ -6,6 +6,11 @@ CryptText is a user-friendly, extensible text editor with built-in encryption an
 Users can protect text files with a password without needing to know or care about the
 underlying cryptography details.
 
+Highlights in the 1.3 release include:
+
+- Migrating from Java 17 to Java 25 (latest LTS)
+- Upgrading to `3.0.0` of swing-extras, which includes a few new features and bug fixes
+
 Highlights in the 1.2 release include:
 
 - A new "file watcher" feature for detecting external changes on disk while a file is open
@@ -29,9 +34,9 @@ Highlights in the 1.1 release include:
 
 If you are running on Linux, and have Java 17 or higher installed, you can download the installer tarball:
 
-- [CryptText Installer](https://www.corbett.ca/apps/CryptText-1.2.tar.gz)
-- Size: 17MB
-- Sha256: `dfdde1336f41b0bdf79c708757ff7d9e28f1da07ca95e42220fed719a825c54a`
+- [CryptText Installer](https://www.corbett.ca/apps/CryptText-1.3.tar.gz)
+- Size: TODO
+- Sha256: `TODO`
 
 This is the best option, as you get an installer script that sets everything up for you:
 
@@ -51,7 +56,7 @@ mvn clean package
 
 # Run the executable jar that Maven created:
 cd target
-java -jar crypttext-1.2.jar
+java -jar crypttext-1.3.jar
 ```
 
 ## User guide
