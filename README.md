@@ -32,7 +32,7 @@ Highlights in the 1.1 release include:
 
 ### Option 1: Installer tarball
 
-If you are running on Linux, and have Java 17 or higher installed, you can download the installer tarball:
+If you are running on Linux, and have Java 25 or higher installed, you can download the installer tarball:
 
 - [CryptText Installer](https://www.corbett.ca/apps/CryptText-1.3.tar.gz)
 - Size: 16MB
@@ -55,6 +55,7 @@ cd crypttext
 mvn clean package
 
 # Run the executable jar that Maven created:
+# Requires Java 25 or higher!
 cd target
 java -jar crypttext-1.3.jar
 ```
