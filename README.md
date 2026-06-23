@@ -36,7 +36,7 @@ If you are running on Linux, and have Java 25 or higher installed, you can downl
 
 - [CryptText Installer](https://www.corbett.ca/apps/CryptText-1.3.tar.gz)
 - Size: 16MB
-- Sha256: `c7f1abdde003c59b21a5330c1affa1df6854d1e345670c64e2c6c33301b4bc41`
+- Sha256: `9d399f4f575da9ed9f0a46eebee3c7695006df92c639f40997e476c3392187cf`
 
 This is the best option, as you get an installer script that sets everything up for you:
 
