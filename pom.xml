@@ -7,11 +7,11 @@
     <!-- This project was generated from the swing-extras Maven archetype 2.8.0 -->
     <groupId>ca.corbett</groupId>
     <artifactId>crypttext</artifactId>
-    <version>1.2</version>
+    <version>1.3</version>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -19,7 +19,7 @@
         <dependency>
             <groupId>ca.corbett</groupId>
             <artifactId>swing-extras</artifactId>
-            <version>2.9.0</version>
+            <version>3.0.0</version>
         </dependency>
 
         <dependency>

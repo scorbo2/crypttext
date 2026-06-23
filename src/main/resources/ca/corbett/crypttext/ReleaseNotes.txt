@@ -1,6 +1,9 @@
 CryptText Release Notes
 ==============================================
 
+Version 1.3 - [2026-06-22] - Maintenance release
+  #94 - Upgrade to Java 25 / swing-extras 3.0
+
 Version 1.2 - [2026-04-18] Maintenance release
   #88 - EditorTab: watch for external file changes via WatchService.
   #86 - EditorTab: handle disk contents changing while tab is open.
