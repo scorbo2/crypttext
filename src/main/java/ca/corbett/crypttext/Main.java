@@ -67,7 +67,7 @@ public class Main {
                    new Object[]{extManager.getLoadedExtensionCount(), extManager.getEnabledLoadedExtensions().size()});
 
         // Load our application configuration:
-        AppConfig.getInstance().load();
+        AppConfig.getInstance().reinitialize();
 
         // Parse update sources if provided, to enable dynamic extension discovery:
         parseUpdateSources();
