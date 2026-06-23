@@ -4,6 +4,7 @@ import javax.swing.Timer;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultCaret;
 import javax.swing.text.JTextComponent;
+import javax.swing.text.Position;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Rectangle;
@@ -92,7 +93,8 @@ public class BlockCursor extends DefaultCaret {
         if (isVisible() && getComponent() != null) {
             try {
                 // Get the target rectangle and set our color:
-                Rectangle r = getComponent().getUI().modelToView(getComponent(), getDot());
+                Rectangle r = getComponent().getUI().modelToView2D(getComponent(), getDot(), Position.Bias.Forward)
+                                            .getBounds();
                 g.setColor(cursorColor);
 
                 // In my testing, I find that r.width is always 0, and I don't know why.
